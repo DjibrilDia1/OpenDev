@@ -5,12 +5,14 @@ on:
     paths:
       - 'OpenDev-api/**'
       - '.github/workflows/api-ci.yml'
+      - '.github/scripts/wait-for-container.sh'
       - '.github/workflows/deploy-database.yml'
       - 'compose*.yml'
   pull_request:
     paths:
       - 'OpenDev-api/**'
       - '.github/workflows/api-ci.yml'
+      - '.github/scripts/wait-for-container.sh'
       - '.github/workflows/deploy-database.yml'
       - 'compose*.yml'
   workflow_dispatch:
@@ -55,7 +57,13 @@ jobs:
       - name: Smoke test production container
         run: |
           docker run -d --name api-ci -p 127.0.0.1:18000:8000 opendev-api:ci
-          curl --fail --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:18000/api/v1/health
+          bash ../.github/scripts/wait-for-container.sh api-ci 90
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:18000/api/v1/health
+      - name: Diagnose container failure
+        if: failure()
+        run: |
+          docker inspect --format '{{json .State}}' api-ci || true
+          docker logs --tail 100 api-ci || true
       - name: Stop production container
         if: always()
         run: docker rm -f api-ci || true
