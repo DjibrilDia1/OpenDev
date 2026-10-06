@@ -1,5 +1,7 @@
 # OpenDev Web
 
+Le [Dockerfile](Dockerfile) propose une cible `development` avec Vite et une cible `production` avec Nginx. Depuis la racine du dépôt : `docker compose up -d --build --wait`. Voir [les instructions Docker](../README.md#docker--développement).
+
 Interface React, TypeScript et Tailwind CSS.
 
 ## CI/CD GitHub Actions
@@ -8,7 +10,7 @@ Le workflow dédié [web-ci.yml](../.github/workflows/web-ci.yml) se lance sur l
 
 Il installe les dépendances avec `npm ci`, vérifie ESLint, compile TypeScript et construit React. Le dossier `dist` est disponible comme artifact pendant 14 jours.
 
-Les variables Supabase et l'URL de l'API sont documentées dans [docs/ci-cd.md](../docs/ci-cd.md). Le déploiement sur Systalink sera ajouté lorsque les services d'hébergement seront configurés.
+Le build natif lit les variables GitHub `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `VITE_API_URL`. Le build Docker utilise `/api/v1` avec un proxy vers FastAPI. La CI construit et vérifie les deux images Docker. Le déploiement sur Systalink sera ajouté lorsque les services d'hébergement seront configurés.
 
 ## Démarrage local
 

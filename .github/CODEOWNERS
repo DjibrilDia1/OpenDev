@@ -1,0 +1,12 @@
+# Backend maintainers. Add real GitHub accounts with write access on the same line.
+# Approval from any listed owner satisfies the code owner review requirement.
+/OpenDev-api/ @DjibrilDia1
+
+# Shared infrastructure, workflows and CODEOWNERS itself.
+/.github/ @DjibrilDia1
+/compose*.yml @DjibrilDia1
+/.env.example @DjibrilDia1
+/.gitignore @DjibrilDia1
+
+# OpenDev-web intentionally has no backend owner requirement.
+# Required ordinary PR approvals are configured in GitHub branch protection.

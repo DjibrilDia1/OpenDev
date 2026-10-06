@@ -5,10 +5,12 @@ on:
     paths:
       - 'OpenDev-web/**'
       - '.github/workflows/web-ci.yml'
+      - 'compose*.yml'
   pull_request:
     paths:
       - 'OpenDev-web/**'
       - '.github/workflows/web-ci.yml'
+      - 'compose*.yml'
   workflow_dispatch:
   workflow_call:
 
@@ -19,7 +21,7 @@ jobs:
   frontend:
     name: Frontend checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: OpenDev-web
@@ -46,4 +48,24 @@ jobs:
           path: OpenDev-web/dist/
           if-no-files-found: error
           retention-days: 14
+      - name: Build production and development containers
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          docker build --target production -t opendev-web:ci \
+            --build-arg VITE_SUPABASE_URL \
+            --build-arg VITE_SUPABASE_ANON_KEY \
+            --build-arg VITE_API_URL=/api/v1 .
+          docker build --target development -t opendev-web:dev .
+      - name: Lint inside the development container
+        run: docker run --rm --entrypoint npm opendev-web:dev run lint
+      - name: Smoke test production container and SPA fallback
+        run: |
+          docker run -d --name web-ci -p 127.0.0.1:18080:8080 opendev-web:ci
+          curl --fail --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:18080/healthz
+          curl --fail http://127.0.0.1:18080/discover
+      - name: Stop production container
+        if: always()
+        run: docker rm -f web-ci || true
 

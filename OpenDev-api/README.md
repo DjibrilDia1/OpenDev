@@ -1,6 +1,8 @@
 # OpenDev API
 
-La CI dédiée est définie dans [api-ci.yml](../.github/workflows/api-ci.yml). Elle vérifie Ruff, les tests API, la construction du package et les migrations Supabase locales sur les changements de `OpenDev-api`. Le workflow [deploy-database.yml](../.github/workflows/deploy-database.yml) applique les migrations distantes uniquement sur déclenchement manuel, après réussite de la CI API. Voir [la configuration CI/CD](../docs/ci-cd.md).
+Le [Dockerfile](Dockerfile) propose les cibles `development` et `production`, avec Python 3.12 et les dépendances figées par `uv.lock`. Depuis la racine du dépôt : `docker compose up -d --build --wait`. Voir [les instructions Docker](../README.md#docker--développement).
+
+La CI dédiée est définie dans [api-ci.yml](../.github/workflows/api-ci.yml). Elle vérifie Ruff, les tests API, la construction du package, les images Docker et les migrations Supabase locales. Le workflow [deploy-database.yml](../.github/workflows/deploy-database.yml) applique les migrations distantes uniquement sur déclenchement manuel, après réussite de la CI API.
 
 API métier FastAPI. Supabase Auth est la source d'identité, et Supabase Data API/PostgreSQL gère les données et leurs accès via RLS. Les routes protégées valident le jeton auprès de Supabase Auth; les requêtes aux tables transmettent ensuite le même jeton utilisateur afin que RLS continue de s'appliquer.
 

@@ -1,0 +1,35 @@
+name: opendev
+
+services:
+  api:
+    build:
+      context: ./OpenDev-api
+      target: development
+    env_file: ./OpenDev-api/.env
+    environment:
+      API_V1_PREFIX: /api/v1
+      FRONTEND_ORIGINS: http://localhost:${OPENDEV_WEB_PORT:-5173}
+      WATCHFILES_FORCE_POLLING: 'true'
+    ports:
+      - '127.0.0.1:${OPENDEV_API_PORT:-8000}:8000'
+    volumes:
+      - ./OpenDev-api/app:/app/app:ro
+    init: true
+
+  web:
+    build:
+      context: ./OpenDev-web
+      target: development
+    env_file: ./OpenDev-web/.env
+    environment:
+      VITE_API_URL: /api/v1
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      - '127.0.0.1:${OPENDEV_WEB_PORT:-5173}:5173'
+    volumes:
+      - ./OpenDev-web/src:/app/src:ro
+      - ./OpenDev-web/index.html:/app/index.html:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    init: true

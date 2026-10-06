@@ -6,11 +6,13 @@ on:
       - 'OpenDev-api/**'
       - '.github/workflows/api-ci.yml'
       - '.github/workflows/deploy-database.yml'
+      - 'compose*.yml'
   pull_request:
     paths:
       - 'OpenDev-api/**'
       - '.github/workflows/api-ci.yml'
       - '.github/workflows/deploy-database.yml'
+      - 'compose*.yml'
   workflow_dispatch:
   workflow_call:
 
@@ -21,7 +23,7 @@ jobs:
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: OpenDev-api
@@ -31,17 +33,32 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: OpenDev-api/pyproject.toml
+          cache-dependency-path: OpenDev-api/uv.lock
       - name: Install dependencies
-        run: python -m pip install -e '.[dev]' build
+        run: |
+          python -m pip install uv==0.12.23
+          uv sync --locked --extra dev
       - name: Lint
-        run: ruff check app tests
+        run: uv run --locked --extra dev ruff check app tests
       - name: Check formatting
-        run: ruff format --check app tests
+        run: uv run --locked --extra dev ruff format --check app tests
       - name: Test API and access token forwarding
-        run: python -m pytest -q
+        run: uv run --locked --extra dev python -m pytest -q
       - name: Build API package
-        run: python -m build
+        run: uv run --locked --extra dev python -m build
+      - name: Build production and development containers
+        run: |
+          docker build --target production -t opendev-api:ci .
+          docker build --target development -t opendev-api:dev .
+      - name: Test inside the development container
+        run: docker run --rm --entrypoint python opendev-api:dev -m pytest -q
+      - name: Smoke test production container
+        run: |
+          docker run -d --name api-ci -p 127.0.0.1:18000:8000 opendev-api:ci
+          curl --fail --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:18000/api/v1/health
+      - name: Stop production container
+        if: always()
+        run: docker rm -f api-ci || true
       - uses: actions/upload-artifact@v4
         with:
           name: opendev-api-${{ github.sha }}

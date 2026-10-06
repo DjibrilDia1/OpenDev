@@ -1,0 +1,31 @@
+name: opendev-production
+
+services:
+  api:
+    build:
+      context: ./OpenDev-api
+      target: production
+    env_file: ./OpenDev-api/.env
+    environment:
+      API_V1_PREFIX: /api/v1
+      FRONTEND_ORIGINS: http://localhost:${OPENDEV_PROD_WEB_PORT:-8080}
+    expose:
+      - '8000'
+    restart: unless-stopped
+    init: true
+
+  web:
+    build:
+      context: ./OpenDev-web
+      target: production
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?Provide the frontend .env with --env-file}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?Provide the public Supabase key}
+        VITE_API_URL: /api/v1
+    ports:
+      - '127.0.0.1:${OPENDEV_PROD_WEB_PORT:-8080}:8080'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
