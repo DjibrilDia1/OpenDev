@@ -1,5 +1,7 @@
 # OpenDev
 
+La pipeline GitHub Actions et sa configuration sont décrites dans [docs/ci-cd.md](docs/ci-cd.md).
+
 OpenDev est une communauté de développeurs pour discuter, apprendre, partager, découvrir et construire ensemble.
 
 ## Architecture

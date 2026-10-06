@@ -8,10 +8,14 @@ version = "0.1.0"
 description = "Business logic API for the OpenDev community."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["fastapi[standard]>=0.116,<1.0", "pydantic-settings>=2.10,<3.0", "pyjwt[crypto]>=2.10,<3.0"]
+dependencies = [
+  "fastapi[standard]>=0.116,<1.0",
+  "httpx>=0.28,<1.0",
+  "pydantic-settings>=2.10,<3.0",
+]
 
 [project.optional-dependencies]
-dev = ["httpx>=0.28,<1.0", "pytest>=8.4,<9.0", "ruff>=0.13,<1.0"]
+dev = ["pytest>=8.4,<9.0", "ruff>=0.13,<1.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
@@ -25,3 +29,10 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ty.environment]
+python = "./.venv"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
