@@ -5,11 +5,13 @@ on:
     paths:
       - 'OpenDev-web/**'
       - '.github/workflows/web-ci.yml'
+      - '.github/scripts/wait-for-container.sh'
       - 'compose*.yml'
   pull_request:
     paths:
       - 'OpenDev-web/**'
       - '.github/workflows/web-ci.yml'
+      - '.github/scripts/wait-for-container.sh'
       - 'compose*.yml'
   workflow_dispatch:
   workflow_call:
@@ -63,8 +65,14 @@ jobs:
       - name: Smoke test production container and SPA fallback
         run: |
           docker run -d --name web-ci -p 127.0.0.1:18080:8080 opendev-web:ci
-          curl --fail --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:18080/healthz
-          curl --fail http://127.0.0.1:18080/discover
+          bash ../.github/scripts/wait-for-container.sh web-ci 90
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:18080/healthz
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:18080/discover
+      - name: Diagnose container failure
+        if: failure()
+        run: |
+          docker inspect --format '{{json .State}}' web-ci || true
+          docker logs --tail 100 web-ci || true
       - name: Stop production container
         if: always()
         run: docker rm -f web-ci || true
