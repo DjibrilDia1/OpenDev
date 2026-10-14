@@ -1,23 +1,113 @@
-import React from 'react'
-import { SettingsIcon } from '../common/Icons'
-
-interface LeftSidebarProps {
+import { Link, NavLink } from 'react-router-dom'
+import { CommunityEmblem } from '../common/CommunityEmblem'
+import { PlusIcon } from '../common/Icons'
+import { useCommunities, useDemo, isCommunityMember } from '../../state/store'
+export function LeftSidebar({
+  expanded = false,
+  onCloseMobile,
+}: {
+  expanded?: boolean
   onCloseMobile?: () => void
-}
-
-export const LeftSidebar: React.FC<LeftSidebarProps> = () => {
+}) {
+  const communityCatalog = useCommunities()
+  const { state, update, openAuth } = useDemo()
+  const joined = state.signedIn
+    ? communityCatalog.filter((community) =>
+        isCommunityMember(state, community),
+      )
+    : []
   return (
-    <aside className="w-16 h-full flex flex-col justify-between items-center py-6 border-r border-[#e5e7eb] bg-transparent">
-      {/* Top spacing indicator */}
-      <div className="w-8 h-0.5 bg-transparent" />
-
-      {/* Bottom settings action */}
-      <button
+    <aside
+      className={'rail-inner ' + (expanded ? 'expanded' : '')}
+      aria-label="Mes communautés"
+    >
+      <span className="rail-caption">
+        {expanded ? 'Mes communautés' : 'Mes espaces'}
+      </span>
+      <div className="rail-links">
+        {joined.slice(0, expanded ? undefined : 5).map((community) => (
+          <NavLink
+            className={({ isActive }) =>
+              'rail-link ' + (isActive ? 'active' : '')
+            }
+            key={community.id}
+            to={'/communaute/' + community.slug}
+            title={community.name}
+            aria-label={
+              community.name +
+              ((community.unreadCount || community.badgeCount) &&
+              !state.readCommunities.includes(community.slug) &&
+              !state.mutedCommunities.includes(community.slug)
+                ? ', nouvelles activités'
+                : '')
+            }
+            onClick={() => {
+              update((previous) => ({
+                ...previous,
+                readCommunities: [
+                  ...new Set([...previous.readCommunities, community.slug]),
+                ],
+              }))
+              onCloseMobile?.()
+            }}
+          >
+            <CommunityEmblem name={community.name} size={expanded ? 44 : 56} />
+            <span className="rail-community-name">{community.name}</span>
+            {!!(community.unreadCount || community.badgeCount) &&
+              !state.readCommunities.includes(community.slug) &&
+              !state.mutedCommunities.includes(community.slug) && (
+                <span className="community-unread-dot" aria-hidden="true" />
+              )}
+          </NavLink>
+        ))}
+        <Link
+          className="rail-add"
+          to="/decouvrir"
+          title="Rejoindre des communautés"
+          aria-label="Rejoindre des communautés"
+          onClick={onCloseMobile}
+        >
+          <PlusIcon size={24} />
+          {expanded && <span>Découvrir les communautés</span>}
+        </Link>
+      </div>
+      {expanded && !joined.length && (
+        <p className="muted">
+          Tes communautés apparaîtront ici après les avoir rejointes.
+        </p>
+      )}
+      {!state.signedIn && expanded && (
+        <button
+          className="button"
+          onClick={() => {
+            onCloseMobile?.()
+            openAuth()
+          }}
+        >
+          Se connecter
+        </button>
+      )}
+      <Link
+        className="rail-bottom rail-settings"
+        to="/parametres"
         aria-label="Paramètres"
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-[#757575] hover:text-[#0e0e0e] hover:bg-neutral-100 transition-colors"
+        title="Paramètres"
+        onClick={onCloseMobile}
       >
-        <SettingsIcon size={18} />
-      </button>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          aria-hidden="true"
+        >
+          <path d="m9 3-.6 2.3-2 .9-2.1-.6-2 3.4 1.6 1.7v2.6L2.3 15l2 3.4 2.1-.6 2 .9L9 21h4l.6-2.3 2-.9 2.1.6 2-3.4-1.6-1.7v-2.6L19.7 9l-2-3.4-2.1.6-2-.9L13 3Z" />
+          <circle cx="11" cy="12" r="3" />
+        </svg>
+        {expanded && <span>Paramètres</span>}
+      </Link>
     </aside>
   )
 }

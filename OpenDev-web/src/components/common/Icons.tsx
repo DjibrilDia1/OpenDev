@@ -5,8 +5,13 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number
 }
 
-export const HouseIcon: React.FC<IconProps> = ({ size = 20, className = '', ...props }) => (
+export const HouseIcon: React.FC<IconProps> = ({
+  size = 20,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -23,8 +28,13 @@ export const HouseIcon: React.FC<IconProps> = ({ size = 20, className = '', ...p
   </svg>
 )
 
-export const CompassIcon: React.FC<IconProps> = ({ size = 20, className = '', ...props }) => (
+export const CompassIcon: React.FC<IconProps> = ({
+  size = 20,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -41,8 +51,13 @@ export const CompassIcon: React.FC<IconProps> = ({ size = 20, className = '', ..
   </svg>
 )
 
-export const MessageCircleIcon: React.FC<IconProps> = ({ size = 20, className = '', ...props }) => (
+export const MessageCircleIcon: React.FC<IconProps> = ({
+  size = 20,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -58,8 +73,13 @@ export const MessageCircleIcon: React.FC<IconProps> = ({ size = 20, className = 
   </svg>
 )
 
-export const BellIcon: React.FC<IconProps> = ({ size = 20, className = '', ...props }) => (
+export const BellIcon: React.FC<IconProps> = ({
+  size = 20,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -76,8 +96,13 @@ export const BellIcon: React.FC<IconProps> = ({ size = 20, className = '', ...pr
   </svg>
 )
 
-export const BookmarkIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BookmarkIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -93,8 +118,13 @@ export const BookmarkIcon: React.FC<IconProps> = ({ size = 16, className = '', .
   </svg>
 )
 
-export const SearchIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const SearchIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -111,8 +141,13 @@ export const SearchIcon: React.FC<IconProps> = ({ size = 16, className = '', ...
   </svg>
 )
 
-export const HeartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const HeartIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -128,8 +163,13 @@ export const HeartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...p
   </svg>
 )
 
-export const ShareIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const ShareIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -145,8 +185,13 @@ export const ShareIcon: React.FC<IconProps> = ({ size = 16, className = '', ...p
   </svg>
 )
 
-export const PinIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const PinIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -163,8 +208,13 @@ export const PinIcon: React.FC<IconProps> = ({ size = 14, className = '', ...pro
   </svg>
 )
 
-export const FilterIcon: React.FC<IconProps> = ({ size = 15, className = '', ...props }) => (
+export const FilterIcon: React.FC<IconProps> = ({
+  size = 15,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -188,8 +238,13 @@ export const FilterIcon: React.FC<IconProps> = ({ size = 15, className = '', ...
   </svg>
 )
 
-export const MoreHorizontalIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const MoreHorizontalIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -207,8 +262,13 @@ export const MoreHorizontalIcon: React.FC<IconProps> = ({ size = 16, className =
   </svg>
 )
 
-export const ChevronRightIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const ChevronRightIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -224,8 +284,13 @@ export const ChevronRightIcon: React.FC<IconProps> = ({ size = 14, className = '
   </svg>
 )
 
-export const ChevronDownIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const ChevronDownIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -241,8 +306,13 @@ export const ChevronDownIcon: React.FC<IconProps> = ({ size = 14, className = ''
   </svg>
 )
 
-export const ArrowUpRightIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const ArrowUpRightIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -259,8 +329,13 @@ export const ArrowUpRightIcon: React.FC<IconProps> = ({ size = 14, className = '
   </svg>
 )
 
-export const ArrowLeftIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const ArrowLeftIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -277,8 +352,13 @@ export const ArrowLeftIcon: React.FC<IconProps> = ({ size = 16, className = '', 
   </svg>
 )
 
-export const PlusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const PlusIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -295,8 +375,13 @@ export const PlusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...pr
   </svg>
 )
 
-export const CheckIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const CheckIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -312,8 +397,13 @@ export const CheckIcon: React.FC<IconProps> = ({ size = 14, className = '', ...p
   </svg>
 )
 
-export const SettingsIcon: React.FC<IconProps> = ({ size = 18, className = '', ...props }) => (
+export const SettingsIcon: React.FC<IconProps> = ({
+  size = 18,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -330,8 +420,13 @@ export const SettingsIcon: React.FC<IconProps> = ({ size = 18, className = '', .
   </svg>
 )
 
-export const FilePdfIcon: React.FC<IconProps> = ({ size = 20, className = '', ...props }) => (
+export const FilePdfIcon: React.FC<IconProps> = ({
+  size = 20,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -351,8 +446,13 @@ export const FilePdfIcon: React.FC<IconProps> = ({ size = 20, className = '', ..
   </svg>
 )
 
-export const DownloadIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const DownloadIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -370,8 +470,13 @@ export const DownloadIcon: React.FC<IconProps> = ({ size = 16, className = '', .
   </svg>
 )
 
-export const SendIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const SendIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -388,8 +493,13 @@ export const SendIcon: React.FC<IconProps> = ({ size = 16, className = '', ...pr
   </svg>
 )
 
-export const PaperclipIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const PaperclipIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -405,8 +515,13 @@ export const PaperclipIcon: React.FC<IconProps> = ({ size = 16, className = '', 
   </svg>
 )
 
-export const SmileIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const SmileIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -425,8 +540,13 @@ export const SmileIcon: React.FC<IconProps> = ({ size = 16, className = '', ...p
   </svg>
 )
 
-export const CodeIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const CodeIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -443,8 +563,13 @@ export const CodeIcon: React.FC<IconProps> = ({ size = 16, className = '', ...pr
   </svg>
 )
 
-export const EditIcon: React.FC<IconProps> = ({ size = 15, className = '', ...props }) => (
+export const EditIcon: React.FC<IconProps> = ({
+  size = 15,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -461,8 +586,13 @@ export const EditIcon: React.FC<IconProps> = ({ size = 15, className = '', ...pr
   </svg>
 )
 
-export const MapPinIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const MapPinIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -479,8 +609,13 @@ export const MapPinIcon: React.FC<IconProps> = ({ size = 14, className = '', ...
   </svg>
 )
 
-export const CalendarIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const CalendarIcon: React.FC<IconProps> = ({
+  size = 14,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -499,8 +634,13 @@ export const CalendarIcon: React.FC<IconProps> = ({ size = 14, className = '', .
   </svg>
 )
 
-export const SparklesIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const SparklesIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -516,8 +656,13 @@ export const SparklesIcon: React.FC<IconProps> = ({ size = 16, className = '', .
   </svg>
 )
 
-export const GridIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const GridIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -536,8 +681,13 @@ export const GridIcon: React.FC<IconProps> = ({ size = 16, className = '', ...pr
   </svg>
 )
 
-export const GithubIcon: React.FC<IconProps> = ({ size = 15, className = '', ...props }) => (
+export const GithubIcon: React.FC<IconProps> = ({
+  size = 15,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -549,8 +699,13 @@ export const GithubIcon: React.FC<IconProps> = ({ size = 15, className = '', ...
   </svg>
 )
 
-export const GlobeIcon: React.FC<IconProps> = ({ size = 15, className = '', ...props }) => (
+export const GlobeIcon: React.FC<IconProps> = ({
+  size = 15,
+  className = '',
+  ...props
+}) => (
   <svg
+    aria-hidden="true"
     width={size}
     height={size}
     viewBox="0 0 24 24"

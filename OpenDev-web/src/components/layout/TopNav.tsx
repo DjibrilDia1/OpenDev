@@ -1,153 +1,219 @@
-import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import {
-  HouseIcon,
-  CompassIcon,
-  MessageCircleIcon,
-  BellIcon,
-  SearchIcon,
-  ChevronDownIcon,
-} from '../common/Icons'
-import { currentUser } from '../../mocks/opendev-data'
+import { useState } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { NavIcon, type NavIconName } from '../common/NavIcon'
+import { SearchIcon } from '../common/Icons'
+import { useDemo } from '../../state/store'
+import { Avatar } from '../common/Avatar'
 
-interface TopNavProps {
-  onToggleMobileMenu?: () => void
-  isLoggedIn?: boolean
-}
-
-export const TopNav: React.FC<TopNavProps> = ({
-  onToggleMobileMenu,
-  isLoggedIn = true,
-}) => {
-  const location = useLocation()
-  const [searchQuery, setSearchQuery] = useState('')
-
-  const isActive = (path: string) => {
-    if (path === '/' && location.pathname === '/') return true
-    if (path !== '/' && location.pathname.startsWith(path)) return true
-    return false
-  }
-
+export function MainNavigation({
+  mobile = false,
+  onOpenMenu,
+}: {
+  mobile?: boolean
+  onOpenMenu?: () => void
+}) {
+  const { state } = useDemo()
+  const items: { to: string; label: string; icon: NavIconName }[] = [
+    { to: '/', label: 'Accueil', icon: 'home' },
+    { to: '/decouvrir', label: 'Découvrir', icon: 'communities' },
+    ...(state.signedIn
+      ? [
+          { to: '/messages', label: 'Messages', icon: 'messages' as const },
+          { to: '/enregistres', label: 'Enregistrés', icon: 'saved' as const },
+          {
+            to: '/notifications',
+            label: 'Notifications',
+            icon: 'notifications' as const,
+          },
+        ]
+      : []),
+    { to: '/evenements', label: 'Événements', icon: 'events' },
+  ]
   return (
-    <header className="sticky top-0 z-40 w-full bg-white border-b border-[#e5e7eb] px-4 lg:px-8 h-16 flex items-center justify-between">
-      {/* LEFT: Mobile toggle & Brand Logo & Search */}
-      <div className="flex items-center gap-4 lg:gap-8 flex-1 max-w-2xl">
-        {onToggleMobileMenu && (
-          <button
-            onClick={onToggleMobileMenu}
-            className="lg:hidden p-2 rounded-lg text-neutral-600 hover:bg-neutral-100"
-            aria-label="Menu"
+    <nav
+      className={mobile ? 'mobile-links' : 'main-navigation'}
+      aria-label={mobile ? 'Navigation mobile' : 'Navigation principale'}
+    >
+      {items
+        .filter((item) =>
+          mobile
+            ? !['/messages', '/enregistres'].includes(item.to)
+            : !['/evenements', '/enregistres'].includes(item.to),
+        )
+        .map(({ to, label, icon }) => (
+          <NavLink
+            key={to}
+            end={to === '/'}
+            to={to}
+            className={({ isActive }) =>
+              'nav-link ' + (isActive ? 'active' : '')
+            }
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            <NavIcon name={icon} />
+            <span>{label}</span>
+            {icon === 'notifications' && !state.readNotifications && (
+              <span className="notification-dot" />
+            )}
+          </NavLink>
+        ))}
+      {mobile && (
+        <button
+          className="nav-link"
+          onClick={onOpenMenu}
+          aria-label="Ouvrir le menu"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+          <span>Plus</span>
+        </button>
+      )}
+    </nav>
+  )
+}
+export function TopNav({
+  onToggleMobileMenu,
+}: {
+  onToggleMobileMenu: () => void
+}) {
+  const { state, openAuth, requireAuth } = useDemo()
+  const [query, setQuery] = useState('')
+  const navigate = useNavigate()
+  return (
+    <header className="top-nav">
+      <div className="top-nav-inner">
+        <button
+          className="icon-button menu-toggle"
+          onClick={onToggleMobileMenu}
+          aria-label="Ouvrir mon espace et mes communautés"
+        >
+          <Avatar
+            initials={state.signedIn ? state.profile.avatarInitials : 'OD'}
+            imageUrl={state.signedIn ? state.profile.avatarUrl : undefined}
+            size="sm"
+          />
+        </button>
+        <Link to="/" className="brand" aria-label="OpenDev, accueil">
+          <svg
+            className="brand-symbol"
+            width="30"
+            height="30"
+            viewBox="0 0 64 64"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="7"
+            strokeLinecap="round"
+          >
+            <path d="M33 15c-9-9-24-2-24 10v14c0 13 15 20 24 10" />
+            <path d="M31 15c9-9 24-2 24 10v14c0 13-15 20-24 10" />
+            <path d="M24 32h16" />
+          </svg>
+          OpenDev
+        </Link>
+        <form
+          className="global-search"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault()
+            navigate('/recherche?q=' + encodeURIComponent(query.trim()))
+          }}
+        >
+          <SearchIcon aria-hidden="true" size={18} />
+          <input
+            aria-label="Rechercher sur OpenDev"
+            placeholder="Rechercher…"
+            name="q"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <button
+            type="submit"
+            className="search-submit"
+            aria-label="Lancer la recherche"
+          >
+            ↵
+          </button>
+        </form>
+        <MainNavigation />
+        <div className="account-nav">
+          {state.signedIn && (
+            <Link
+              className="desktop-profile"
+              to="/profil"
+              aria-label="Mon profil"
+              title="Mon profil"
+            >
+              <Avatar
+                initials={state.profile.avatarInitials}
+                imageUrl={state.profile.avatarUrl}
+                size="sm"
+              />
+              <span>Moi</span>
+            </Link>
+          )}
+          <nav className="account-shortcuts" aria-label="Raccourcis personnels">
+            <NavLink
+              to="/evenements"
+              className={({ isActive }) =>
+                'nav-link ' + (isActive ? 'active' : '')
+              }
+            >
+              <NavIcon name="events" />
+              <span>Événements</span>
+            </NavLink>
+            {state.signedIn && (
+              <NavLink
+                to="/enregistres"
+                className={({ isActive }) =>
+                  'nav-link ' + (isActive ? 'active' : '')
+                }
+              >
+                <NavIcon name="saved" />
+                <span>Enregistrés</span>
+              </NavLink>
+            )}
+          </nav>
+          <button
+            className="icon-button mobile-publish"
+            aria-label="Créer une publication"
+            onClick={() => {
+              if (requireAuth()) navigate('/?publier=1')
+            }}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <path d="M13 4H4v16h16v-9M15 3l6 6M10 14l-1 1 1-5L19 1l4 4-9 9Z" />
             </svg>
           </button>
-        )}
-
-        <Link to="/" className="shrink-0 flex items-center">
-          <div className="bg-[#0e0e0e] text-white font-mono font-bold text-sm tracking-tight px-3 py-1.5 rounded-md flex items-center shadow-sm">
-            &lt;OpenDev /&gt;
-          </div>
-        </Link>
-
-        {/* Global Search Bar */}
-        <div className="relative w-full max-w-md hidden sm:block">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9e9e9e]">
-            <SearchIcon size={15} />
-          </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher discussions, tags, membres..."
-            className="w-full bg-[#f8f8f6] border border-[#e5e7eb] rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-[#0e0e0e] placeholder-[#9e9e9e] focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
-          />
-        </div>
-      </div>
-
-      {/* RIGHT: Main navigation items + Profile or Login */}
-      <div className="flex items-center gap-6 lg:gap-8">
-        <nav className="flex items-center gap-6 sm:gap-8">
-          {/* Accueil */}
           <Link
-            to="/"
-            className={`flex flex-col items-center justify-center group transition-colors ${
-              isActive('/') ? 'text-[#0e0e0e]' : 'text-[#616161] hover:text-[#0e0e0e]'
-            }`}
-          >
-            <HouseIcon size={20} className={isActive('/') ? 'stroke-[2]' : ''} />
-            <span className={`text-[11px] mt-0.5 ${isActive('/') ? 'font-semibold' : 'font-normal'}`}>
-              Acceuil
-            </span>
-          </Link>
-
-          {/* Découvrir */}
-          <Link
-            to="/decouvrir"
-            className={`flex flex-col items-center justify-center group transition-colors ${
-              isActive('/decouvrir') ? 'text-[#0e0e0e]' : 'text-[#616161] hover:text-[#0e0e0e]'
-            }`}
-          >
-            <CompassIcon size={20} className={isActive('/decouvrir') ? 'stroke-[2]' : ''} />
-            <span className={`text-[11px] mt-0.5 ${isActive('/decouvrir') ? 'font-semibold' : 'font-normal'}`}>
-              Decouvrir
-            </span>
-          </Link>
-
-          {/* Messages */}
-          <Link
+            className="icon-button mobile-messages"
             to="/messages"
-            className={`flex flex-col items-center justify-center relative group transition-colors ${
-              isActive('/messages') ? 'text-[#0e0e0e]' : 'text-[#616161] hover:text-[#0e0e0e]'
-            }`}
+            aria-label="Messages"
           >
-            <div className="relative">
-              <MessageCircleIcon size={20} className={isActive('/messages') ? 'stroke-[2]' : ''} />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
-            </div>
-            <span className={`text-[11px] mt-0.5 ${isActive('/messages') ? 'font-semibold' : 'font-normal'}`}>
-              Messages
-            </span>
+            <NavIcon name="messages" />
           </Link>
-
-          {/* Notifs */}
-          <button
-            className="flex flex-col items-center justify-center group text-[#616161] hover:text-[#0e0e0e] transition-colors"
-          >
-            <div className="relative">
-              <BellIcon size={20} />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </div>
-            <span className="text-[11px] mt-0.5 font-normal">
-              Notifs
-            </span>
-          </button>
-        </nav>
-
-        {/* User profile dropdown or Login button */}
-        {isLoggedIn ? (
-          <Link
-            to="/profil"
-            className="flex items-center gap-2.5 pl-2 group py-1 pr-1 hover:bg-neutral-50 rounded-xl transition-colors"
-          >
-            <div className="w-8 h-8 rounded-full bg-[#f2f2f0] border border-[#e0e0e0] flex items-center justify-center text-xs font-semibold text-[#0e0e0e]">
-              {currentUser.avatarInitials}
-            </div>
-            <div className="hidden lg:flex flex-col items-start leading-tight">
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-bold text-[#0e0e0e] group-hover:text-neutral-700">
-                  {currentUser.name}
-                </span>
-                <ChevronDownIcon size={12} className="text-[#616161]" />
-              </div>
-              <span className="text-[10px] text-[#757575]">Mon profil</span>
-            </div>
-          </Link>
-        ) : (
-          <button className="bg-[#0e0e0e] text-white hover:bg-neutral-800 transition-colors text-xs font-semibold px-4 py-2.5 rounded-xl shrink-0">
-            Se connecter
-          </button>
-        )}
+          {!state.signedIn && (
+            <button className="button compact" onClick={openAuth}>
+              Se connecter
+            </button>
+          )}
+        </div>
       </div>
     </header>
   )

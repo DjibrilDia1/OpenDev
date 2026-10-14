@@ -1,8 +1,26 @@
-export type CommunityCategory = 'Frontend' | 'Backend' | 'Design' | 'Contribution' | 'Open source'
+export type CommunityCategory =
+  | 'Frontend'
+  | 'Backend'
+  | 'Design'
+  | 'Contribution'
+  | 'Open source'
+  | 'IA & Data'
+  | 'DevOps'
+  | 'Mobile'
+  | 'Gaming'
+  | 'Sécurité'
 
 export type CommunityRole = 'Membre' | 'Modérateur'
 
 export interface Community {
+  visibility?: 'public' | 'private'
+  coverUrl?: string
+  memberIds?: string[]
+  staff?: { userId: string; role: 'Administrateur' | 'Modérateur' }[]
+  kind?: 'official' | 'member'
+  ownerId?: string
+  ownerName?: string
+  invitedUserIds?: string[]
   id: string
   name: string
   slug: string

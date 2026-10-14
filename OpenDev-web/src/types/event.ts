@@ -1,4 +1,7 @@
 export interface CommunityEvent {
+  communitySlug?: string
+  organizerId?: string
+  date: string
   id: string
   title: string
   month: string

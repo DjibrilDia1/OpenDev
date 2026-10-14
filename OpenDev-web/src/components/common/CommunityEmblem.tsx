@@ -1,38 +1,47 @@
-import React from 'react'
 import reactSvg from '../../assets/emblems/react.svg'
 import pythonSvg from '../../assets/emblems/python.svg'
-import designSystemsSvg from '../../assets/emblems/designsystems.svg'
-import openSourceSvg from '../../assets/emblems/opensource.svg'
-
-interface CommunityEmblemProps {
-  name: string
-  className?: string
-  size?: number
-}
-
-export const CommunityEmblem: React.FC<CommunityEmblemProps> = ({
+import designSvg from '../../assets/emblems/designsystems.svg'
+import openSvg from '../../assets/emblems/opensource.svg'
+export function CommunityEmblem({
   name,
   className = '',
   size = 40,
-}) => {
-  const normalized = name.toLowerCase().replace(/\s+/g, '')
-
-  let src = reactSvg
-  if (normalized.includes('python')) {
-    src = pythonSvg
-  } else if (normalized.includes('design')) {
-    src = designSystemsSvg
-  } else if (normalized.includes('open') || normalized.includes('source')) {
-    src = openSourceSvg
-  }
-
-  return (
+}: {
+  name: string
+  className?: string
+  size?: number
+}) {
+  const source =
+    name === 'React'
+      ? reactSvg
+      : name === 'Python' || name === 'FastAPI'
+        ? pythonSvg
+        : name === 'Design Systems' || name === 'Creative Coding'
+          ? designSvg
+          : name === 'Open Source'
+            ? openSvg
+            : undefined
+  return source ? (
     <img
-      src={src}
-      alt={name}
+      src={source}
+      alt=""
       width={size}
       height={size}
-      className={`rounded-xl shrink-0 select-none ${className}`}
+      className={'community-emblem ' + className}
     />
+  ) : (
+    <span
+      aria-hidden="true"
+      className={'community-emblem letter-emblem ' + className}
+      style={{ width: size, height: size }}
+    >
+      {name === 'TypeScript'
+        ? 'TS'
+        : name === 'DevOps & Cloud'
+          ? '⌘'
+          : name === 'IA & Data'
+            ? '✳'
+            : name.slice(0, 2)}
+    </span>
   )
 }

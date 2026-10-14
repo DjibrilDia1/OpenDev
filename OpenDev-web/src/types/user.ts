@@ -14,6 +14,7 @@ export interface User {
   tags?: string[]
   githubUrl?: string
   websiteUrl?: string
+  linkedinUrl?: string
   followersCount?: number
   followingCount?: number
   isFollowing?: boolean
