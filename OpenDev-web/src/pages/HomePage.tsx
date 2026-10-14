@@ -1,66 +1,80 @@
-import React, { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { HeroBanner } from '../components/feed/HeroBanner'
 import { CreatePost } from '../components/feed/CreatePost'
 import { PostCard } from '../components/feed/PostCard'
-import { homeFeedPosts, currentUser } from '../mocks/opendev-data'
-import type { Post } from '../types'
-
-export const HomePage: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>(homeFeedPosts)
-  const [filter, setFilter] = useState<'forYou' | 'recent'>('forYou')
-
-  const handlePublish = (content: string) => {
-    const newPost: Post = {
-      id: `post-${Date.now()}`,
-      author: {
-        name: currentUser.name,
-        handle: currentUser.handle,
-        initials: currentUser.avatarInitials,
-      },
-      timeAgo: 'à l’instant',
-      title: '',
-      content: content,
-      tags: [],
-      likesCount: 0,
-      repliesCount: 0,
-      sharesCount: 0,
-      techBadge: 'React',
-    }
-    setPosts([newPost, ...posts])
-  }
-
+import { EmptyState } from '../components/common/EmptyState'
+import { useDemo } from '../state/store'
+import { people, relatedCommunities, publicationTime } from '../state/catalog'
+export function HomePage() {
+  const { state, allPosts } = useDemo()
+  const [params, setParams] = useSearchParams()
+  const filter = params.get('fil') ?? 'pour-toi'
+  const suggested = relatedCommunities(state.interests).map(
+    (community) => community.slug,
+  )
+  const visible =
+    filter === 'abonnements'
+      ? allPosts.filter(
+          (post) =>
+            state.signedIn &&
+            (state.joined.includes(post.communitySlug ?? '') ||
+              people.some(
+                (user) =>
+                  user.handle === post.author.handle &&
+                  state.following.includes(user.id),
+              )),
+        )
+      : filter === 'recents'
+        ? [...allPosts].sort((a, b) => publicationTime(b) - publicationTime(a))
+        : [...allPosts].sort(
+            (a, b) =>
+              Number(!!b.createdAt) - Number(!!a.createdAt) ||
+              Number(suggested.includes(b.communitySlug ?? '')) -
+                Number(suggested.includes(a.communitySlug ?? '')),
+          )
   return (
-    <AppLayout sidebarVariant="home" showRail={true}>
-      <div className="max-w-2xl mx-auto space-y-5">
-        {/* HERO BANNER */}
+    <AppLayout>
+      <div className="feed-page">
         <HeroBanner />
-
-        {/* FEED HEADER WITH FILTER */}
-        <div className="flex items-center justify-between pt-1">
-          <h2 className="text-base sm:text-lg font-bold text-[#0e0e0e]">
-            Fil communautaire
-          </h2>
-          <div className="flex items-center gap-1 text-xs font-semibold text-[#0e0e0e] cursor-pointer">
-            <button
-              onClick={() => setFilter(filter === 'forYou' ? 'recent' : 'forYou')}
-              className="flex items-center gap-1 hover:text-neutral-600 transition-colors"
-            >
-              <span>{filter === 'forYou' ? 'Pour toi' : 'Plus récents'}</span>
-              <span className="text-[10px]">▾</span>
-            </button>
+        <div className="page-heading">
+          <div>
+            <h1>Le fil communautaire</h1>
+            <p>Ce qu’on apprend. Ce qu’on construit. Ensemble.</p>
           </div>
         </div>
-
-        {/* CREATE POST INPUT */}
-        <CreatePost onPublish={handlePublish} />
-
-        {/* FEED POSTS LIST */}
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+        <div className="tabs" aria-label="Filtrer les publications">
+          {[
+            ['pour-toi', 'Pour toi'],
+            ['abonnements', 'Abonnements'],
+            ['recents', 'Récents'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              aria-pressed={filter === key}
+              className={filter === key ? 'active' : ''}
+              onClick={() => setParams({ fil: key })}
+            >
+              {label}
+            </button>
           ))}
         </div>
+        <CreatePost />
+        <div className="post-list">
+          {visible.map((post) => (
+            <PostCard post={post} key={post.id} />
+          ))}
+          {!visible.length && (
+            <EmptyState
+              title="Ton réseau commence ici"
+              description="Rejoins une communauté ou suis des développeurs pour retrouver leurs publications."
+              to="/decouvrir"
+            />
+          )}
+        </div>
+        <p className="feed-end">
+          Tu es à jour. Et si tu partageais une découverte ?
+        </p>
       </div>
     </AppLayout>
   )

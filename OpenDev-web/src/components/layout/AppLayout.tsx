@@ -1,84 +1,69 @@
-import React, { useState } from 'react'
-import { TopNav } from './TopNav'
+import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import { TopNav, MainNavigation } from './TopNav'
 import { LeftSidebar } from './LeftSidebar'
 import { RightSidebar } from './RightSidebar'
-
+import { Modal } from '../common/Modal'
 interface AppLayoutProps {
-  children: React.ReactNode
+  children: ReactNode
   sidebarVariant?: 'home' | 'none'
   showRail?: boolean
-  isLoggedIn?: boolean
-  customRightSidebar?: React.ReactNode
+  customRightSidebar?: ReactNode
 }
-
-export const AppLayout: React.FC<AppLayoutProps> = ({
+export function AppLayout({
   children,
   sidebarVariant = 'home',
   showRail = true,
-  isLoggedIn = true,
   customRightSidebar,
-}) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
+}: AppLayoutProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const hasRight = !!customRightSidebar || sidebarVariant === 'home'
   return (
-    <div className="min-h-screen bg-[#f8f8f6] text-[#0e0e0e] flex flex-col font-sans">
-      {/* TOP NAVIGATION */}
-      <TopNav
-        isLoggedIn={isLoggedIn}
-        onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
-      />
-
-      {/* MOBILE DRAWER */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          <div className="relative w-64 max-w-[80vw] bg-white h-full shadow-xl z-10 flex flex-col">
-            <div className="p-4 border-b border-[#e5e7eb] flex items-center justify-between">
-              <span className="font-mono font-bold text-sm bg-[#0e0e0e] text-white px-2.5 py-1 rounded">
-                &lt;OpenDev /&gt;
-              </span>
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-100"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4 flex-1">
-              <LeftSidebar onCloseMobile={() => setMobileMenuOpen(false)} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MAIN CONTAINER */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto flex">
-        {/* LEFT RAIL (Desktop) */}
+    <>
+      <a className="skip-link" href="#main">
+        Aller au contenu
+      </a>
+      <TopNav onToggleMobileMenu={() => setMenuOpen(true)} />
+      <div
+        className={
+          'app-shell ' +
+          (hasRight ? 'with-right' : 'wide-content') +
+          (!showRail ? ' no-rail' : '')
+        }
+      >
         {showRail && (
-          <div className="hidden lg:block shrink-0 sticky top-16 h-[calc(100vh-4rem)]">
+          <div className="community-rail">
             <LeftSidebar />
           </div>
         )}
-
-        {/* CENTER CONTENT */}
-        <main className="flex-1 min-w-0 py-6 px-4 sm:px-6 lg:px-8">
+        <main id="main" className="main-content" tabIndex={-1}>
           {children}
         </main>
-
-        {/* RIGHT SIDEBAR (Desktop) */}
-        {customRightSidebar ? (
-          <div className="hidden xl:block shrink-0 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto border-l border-[#e5e7eb]">
-            {customRightSidebar}
+        {hasRight && (
+          <div className="right-column">
+            {customRightSidebar ?? <RightSidebar />}
           </div>
-        ) : sidebarVariant === 'home' ? (
-          <div className="hidden xl:block shrink-0 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto border-l border-[#e5e7eb]">
-            <RightSidebar />
-          </div>
-        ) : null}
+        )}
       </div>
-    </div>
+      <div className="bottom-nav">
+        <MainNavigation mobile onOpenMenu={() => setMenuOpen(true)} />
+      </div>
+      {menuOpen && (
+        <Modal title="Mon espace" onClose={() => setMenuOpen(false)}>
+          <nav className="mobile-space-links" aria-label="Mon espace">
+            <Link to="/profil" onClick={() => setMenuOpen(false)}>
+              Mon profil
+            </Link>
+            <Link to="/enregistres" onClick={() => setMenuOpen(false)}>
+              Publications enregistrées
+            </Link>
+            <Link to="/developpeurs" onClick={() => setMenuOpen(false)}>
+              Mon réseau
+            </Link>
+          </nav>
+          <LeftSidebar expanded onCloseMobile={() => setMenuOpen(false)} />
+        </Modal>
+      )}
+    </>
   )
 }

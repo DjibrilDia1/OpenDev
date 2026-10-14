@@ -1,142 +1,144 @@
-import React from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '../common/Avatar'
-import { PlusIcon } from '../common/Icons'
-import {
-  currentUser,
-  popularTopics,
-  upcomingEvents,
-  suggestedCommunities,
-} from '../../mocks/opendev-data'
+import { FollowButton } from '../common/FollowButton'
+import { people, profilePath } from '../../state/catalog'
+import { useDemo, toggleItem, useCommunityEvents } from '../../state/store'
 
-export const RightSidebar: React.FC = () => {
+export function RightSidebar() {
+  const upcomingEvents = useCommunityEvents()
+  const { state, update, requireAuth, notify, allPosts } = useDemo()
+  const contributionCount = allPosts.filter(
+    (post) => post.author.handle === state.profile.handle,
+  ).length
   return (
-    <aside className="w-80 shrink-0 space-y-4 py-6 px-4">
-      {/* 1. USER PROFILE CARD */}
-      <div className="bg-white border border-[#e0e0e0] rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Avatar initials={currentUser.avatarInitials} size="md" />
-          <div className="min-w-0">
-            <h3 className="font-bold text-sm text-[#0e0e0e] truncate">{currentUser.name}</h3>
-            <p className="text-xs text-[#616161] truncate">{currentUser.roleTitle}</p>
+    <aside className="right-sidebar" aria-label="À découvrir">
+      {state.signedIn && (
+        <section className="sidebar-profile" aria-label="Mon profil en résumé">
+          <Link
+            to="/profil"
+            className="sidebar-profile-banner"
+            aria-label="Voir mon profil"
+          >
+            <span aria-hidden="true">&lt;build together /&gt;</span>
+          </Link>
+          <Link
+            to="/profil"
+            className="sidebar-profile-identity"
+            aria-label="Voir mon profil"
+          >
+            <Avatar
+              initials={state.profile.avatarInitials}
+              imageUrl={state.profile.avatarUrl}
+              size="lg"
+            />
+            <div className="grow">
+              <h2>{state.profile.name}</h2>
+              <p className="muted">{state.profile.roleTitle}</p>
+            </div>
+          </Link>
+          <div className="sidebar-profile-stats">
+            <Link to="/profil">{contributionCount} contributions</Link>
+            <span>{state.joined.length} communautés</span>
+            <Link to="/profil/me/abonnements">
+              {state.following.length} suivis
+            </Link>
           </div>
+        </section>
+      )}
+      <section>
+        <div className="section-heading">
+          <h2>Des devs à suivre</h2>
+          <Link to="/developpeurs">Voir tout</Link>
         </div>
-        <p className="text-xs text-[#757575] mt-3 pt-3 border-t border-[#f0f0f0]">
-          {currentUser.contributionsCount} contributions · {currentUser.communitiesCount} communautés · {currentUser.followingCount} suivis
-        </p>
-      </div>
-
-      {/* 2. SUJETS POPULAIRES */}
-      <div className="bg-white border border-[#e0e0e0] rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-bold text-sm text-[#0e0e0e]">Sujets populaires</h4>
-          <button className="text-xs text-[#616161] hover:text-[#0e0e0e] transition-colors">
-            Voir tout
-          </button>
-        </div>
-        <div className="divide-y divide-[#f0f0f0]">
-          {popularTopics.map((topic) => (
-            <div
-              key={topic.tag}
-              className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between group cursor-pointer"
-            >
-              <div>
-                <p className="text-xs font-bold text-[#0e0e0e] group-hover:text-neutral-700">
-                  {topic.tag}
-                </p>
-                <p className="text-[11px] text-[#757575] mt-0.5">
-                  {topic.discussionsCount}
-                </p>
+        <div className="suggestion-list">
+          {people
+            .filter((user) => !user.isSelf)
+            .slice(0, 3)
+            .map((user) => (
+              <div className="person-row" key={user.id}>
+                <Link
+                  to={profilePath(user.handle)}
+                  aria-label={'Voir le profil de ' + user.name}
+                >
+                  <Avatar initials={user.avatarInitials} />
+                </Link>
+                <Link
+                  className="grow person-name"
+                  to={profilePath(user.handle)}
+                >
+                  <strong>{user.name}</strong>
+                  <span>{user.roleTitle}</span>
+                </Link>
+                <FollowButton user={user} />
               </div>
+            ))}
+        </div>
+      </section>
+      <section className="sidebar-topics">
+        <h2>Dans les conversations</h2>
+        {[
+          { tag: 'React', label: 'Composants & bonnes pratiques' },
+          { tag: 'TypeScript', label: 'Des types qui font la différence' },
+          { tag: 'open-source', label: 'Construire ensemble' },
+        ].map((topic) => (
+          <Link
+            to={'/recherche?q=' + encodeURIComponent(topic.tag)}
+            className="topic-row"
+            key={topic.tag}
+          >
+            <span>
+              <strong>#{topic.tag}</strong>
+              <small>{topic.label}</small>
+            </span>
+          </Link>
+        ))}
+      </section>
+      <section>
+        <div className="section-heading">
+          <h2>On se retrouve ?</h2>
+          <Link to="/evenements">Calendrier</Link>
+        </div>
+        {upcomingEvents.map((event) => (
+          <div className="event-row" key={event.id}>
+            <div className="date-tile">
+              <span>{event.month}</span>
+              <strong>{event.day}</strong>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3. À VENIR */}
-      <div className="bg-white border border-[#e0e0e0] rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-bold text-sm text-[#0e0e0e]">À venir</h4>
-          <button className="text-xs text-[#616161] hover:text-[#0e0e0e] transition-colors">
-            Calendrier
-          </button>
-        </div>
-        <div className="space-y-3">
-          {upcomingEvents.map((ev) => (
-            <div key={ev.id} className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-[#f2f2f0] border border-[#e0e0e0] flex flex-col items-center justify-center shrink-0">
-                <span className="text-[9px] font-bold uppercase text-[#757575] leading-none">
-                  {ev.month}
-                </span>
-                <span className="text-sm font-bold text-[#0e0e0e] leading-tight">
-                  {ev.day}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <h5 className="text-xs font-bold text-[#0e0e0e] truncate">{ev.title}</h5>
-                <p className="text-[11px] text-[#757575] mt-0.5 truncate">
-                  {ev.location} · {ev.time}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. À DÉCOUVRIR */}
-      <div className="bg-white border border-[#e0e0e0] rounded-2xl p-4 shadow-sm">
-        <h4 className="font-bold text-sm text-[#0e0e0e]">À découvrir</h4>
-        <p className="text-xs text-[#616161] mt-0.5 mb-3">Des communautés pour toi</p>
-        <div className="space-y-3">
-          {suggestedCommunities.map((item) => (
-            <div key={item.id} className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#f4f4f5] border border-[#e0e0e0] flex items-center justify-center text-xs text-[#0e0e0e]">
-                  {item.iconType === 'cloud' && '⌘'}
-                  {item.iconType === 'sparkle' && '✳'}
-                  {item.iconType === 'layers' && '◇'}
-                </div>
-                <div>
-                  <h5 className="text-xs font-bold text-[#0e0e0e]">{item.name}</h5>
-                  <p className="text-[11px] text-[#757575]">{item.membersCount}</p>
-                </div>
-              </div>
+            <div className="grow">
+              <strong>{event.title}</strong>
+              <p className="muted small">
+                {event.location} · {event.time}
+              </p>
               <button
-                className="p-1 rounded-lg hover:bg-neutral-100 text-[#0e0e0e] transition-colors"
-                aria-label="Rejoindre"
+                className="text-button small"
+                aria-pressed={state.eventIds.includes(event.id)}
+                onClick={() => {
+                  if (!requireAuth()) return
+                  update((previous) => ({
+                    ...previous,
+                    eventIds: toggleItem(previous.eventIds, event.id),
+                  }))
+                  notify(
+                    state.eventIds.includes(event.id)
+                      ? 'Participation annulée.'
+                      : 'Participation enregistrée dans la démo.',
+                  )
+                }}
               >
-                <PlusIcon size={14} />
+                {state.eventIds.includes(event.id)
+                  ? '✓ Je participe'
+                  : 'Participer'}
               </button>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 5. CONSTRUISONS ENSEMBLE */}
-      <div className="bg-[#f2f2f0] border border-[#e0e0e0] rounded-2xl p-4">
-        <h4 className="font-bold text-sm text-[#0e0e0e] text-center">Construisons ensemble</h4>
-        <p className="text-xs text-[#616161] mt-1 mb-3 text-center leading-relaxed">
-          Rejoins des développeurs qui partagent tes intérêts.
-        </p>
-        <Link
-          to="/decouvrir"
-          className="block w-full bg-[#0e0e0e] text-white hover:bg-neutral-800 transition-colors text-xs font-semibold py-2 px-3 rounded-lg text-center"
-        >
-          Trouver ma communauté
-        </Link>
-      </div>
-
-      {/* 6. FOOTER LINKS */}
-      <div className="pt-2 text-[11px] text-[#9e9e9e] leading-relaxed text-center">
-        <p className="space-x-1.5">
-          <a href="#about" className="hover:underline">À propos</a>
-          <span>·</span>
-          <a href="#rules" className="hover:underline">Règles</a>
-          <span>·</span>
-          <a href="#privacy" className="hover:underline">Confidentialité</a>
-          <span>·</span>
-          <a href="#help" className="hover:underline">Aide</a>
-        </p>
+          </div>
+        ))}
+      </section>
+      <div className="sidebar-footer">
+        <Link to="/a-propos">À propos</Link>
+        <Link to="/regles">Règles</Link>
+        <Link to="/confidentialite">Confidentialité</Link>
+        <p>Fait pour celles et ceux qui construisent.</p>
+        <p>© OpenDev 2026 · Démonstration</p>
       </div>
     </aside>
   )

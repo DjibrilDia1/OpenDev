@@ -1,193 +1,185 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { CommunityEditor } from '../components/community/CommunityEditor'
 import { AppLayout } from '../components/layout/AppLayout'
+import { CommunityCard } from '../components/community/CommunityCard'
+import { EmptyState } from '../components/common/EmptyState'
 import { SearchIcon } from '../components/common/Icons'
-import { communities } from '../mocks/opendev-data'
-
-// Import extracted banners
-import reactBanner from '../assets/images/decouvrir_banner_1.png'
-import pythonBanner from '../assets/images/decouvrir_banner_3.png'
-import designBanner from '../assets/images/decouvrir_banner_5.png'
-import openSourceBanner from '../assets/images/decouvrir_banner_7.png'
-
-export const DiscoverPage: React.FC = () => {
-  const [selectedTab, setSelectedTab] = useState<'Front' | 'Backend' | 'Design' | 'Open Source'>('Front')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [joinedMap, setJoinedMap] = useState<Record<string, boolean>>({
-    react: false,
-    python: false,
-    'design-systems': false,
-    'open-source': false,
-  })
-
-  const toggleJoin = (slug: string) => {
-    setJoinedMap((prev) => ({
-      ...prev,
-      [slug]: !prev[slug],
-    }))
+import { categories, matches } from '../state/catalog'
+import { useCommunities, useDemo } from '../state/store'
+export function DiscoverPage() {
+  const communityCatalog = useCommunities()
+  const [params, setParams] = useSearchParams()
+  const { state, requireAuth } = useDemo()
+  const [creating, setCreating] = useState(false)
+  const category = params.get('categorie') ?? 'Tout'
+  const query = params.get('q') ?? ''
+  const joinedOnly = params.get('mes') === '1'
+  function setFilter(key: string, value: string) {
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
   }
-
-  const communityBanners: Record<string, string> = {
-    react: reactBanner,
-    python: pythonBanner,
-    'design-systems': designBanner,
-    'open-source': openSourceBanner,
-  }
-
-  const tabs = [
-    { label: 'Front', key: 'Front' },
-    { label: 'Backend', key: 'Backend' },
-    { label: 'Design', key: 'Design' },
-    { label: 'Open Source', key: 'Open Source' },
-  ] as const
-
-  const filteredCommunities = communities.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.description.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSearch
-  })
-
+  const filtered = communityCatalog.filter(
+    (community) =>
+      (!params.get('type') || community.kind === params.get('type')) &&
+      (category === 'Tout' || community.category === category) &&
+      matches(community.name + ' ' + community.description, query) &&
+      (!joinedOnly ||
+        (state.signedIn && state.joined.includes(community.slug))),
+  )
   return (
-    <AppLayout sidebarVariant="none" showRail={false}>
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* HERO BANNER SOMBRE (FIDÈLE À DÉCOUVRIR.SVG) */}
-        <div className="bg-[#3e3e3e] text-white rounded-2xl p-8 sm:p-10 shadow-sm relative overflow-hidden">
-          {/* Top navigation tabs in hero */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/10 pb-6 mb-12">
-            <div className="flex items-center gap-6 text-sm font-medium">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setSelectedTab(tab.key)}
-                  className={`transition-colors relative pb-1 ${
-                    selectedTab === tab.key
-                      ? 'text-white font-semibold'
-                      : 'text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  {tab.label}
-                  {selectedTab === tab.key && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* In-hero Search input */}
-            <div className="relative w-full sm:w-80">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
-                <SearchIcon size={14} />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher une communaute"
-                className="w-full bg-[#525252]/60 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-neutral-400 focus:outline-none focus:bg-[#525252] transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Hero Main Heading */}
-          <div className="py-6">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
-              Trouver ta communaute
+    <AppLayout sidebarVariant="none">
+      <div className="discover-page">
+        <section className="discover-hero">
+          <div className="discover-hero-copy">
+            <p>Il y a une place pour toi ici.</p>
+            <h1>
+              Trouve tes gens.
+              <br />
+              Construis la suite.
             </h1>
+            <p>
+              Des communautés de développeurs pour apprendre,
+              <br className="desktop-break" /> partager et donner vie à tes
+              idées.
+            </p>
+            <a href="#communautes" className="button light">
+              Explorer les communautés <span aria-hidden="true">↓</span>
+            </a>
           </div>
-        </div>
-
-        {/* Subtitle text */}
-        <p className="text-xs sm:text-sm text-[#616161]">
-          Pose une question, partage une découverte ou aide quelqu’un à débloquer son projet.
-        </p>
-
-        {/* COMMUNITIES GRID (3 COLUMNS DESKTOP) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
-          {filteredCommunities.map((c) => {
-            const isJoined = joinedMap[c.slug]
-            const bannerImg = communityBanners[c.slug]
-
-            return (
-              <div
-                key={c.id}
-                className="bg-white border border-[#e0e0e0] rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-              >
-                <div>
-                  {/* Banner Image */}
-                  <div className="h-36 sm:h-40 w-full overflow-hidden bg-[#242424] relative">
-                    {bannerImg ? (
-                      <img
-                        src={bannerImg}
-                        alt={c.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="w-full h-full flex items-center justify-center font-bold text-white text-xl"
-                        style={{ backgroundColor: c.color }}
-                      >
-                        {c.name}
-                      </div>
-                    )}
-
-                    {/* Emblem Badge floating */}
-                    <div className="absolute -bottom-3 left-4 w-10 h-10 rounded-xl bg-white border border-[#e0e0e0] p-1.5 shadow-sm flex items-center justify-center">
-                      <div
-                        className="w-full h-full rounded-lg flex items-center justify-center font-bold text-xs"
-                        style={{ backgroundColor: c.bgColor, color: c.color }}
-                      >
-                        {c.slug === 'react' && '⚛'}
-                        {c.slug === 'python' && '🐍'}
-                        {c.slug === 'design-systems' && '◇'}
-                        {c.slug === 'open-source' && '⑂'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Body Content */}
-                  <div className="p-5 pt-6 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        to={c.slug === 'react' ? '/communaute/react' : '#'}
-                        className="text-base font-bold text-[#0e0e0e] hover:underline"
-                      >
-                        {c.name}
-                      </Link>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-xs text-[#757575]">
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: c.color }}
-                      />
-                      <span>{c.memberCount}</span>
-                    </div>
-
-                    <p className="text-xs text-[#616161] leading-relaxed line-clamp-2 pt-1">
-                      {c.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Footer Join Action */}
-                <div className="p-5 pt-0">
-                  <button
-                    onClick={() => toggleJoin(c.slug)}
-                    className={`w-full py-2 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-                      isJoined
-                        ? 'bg-[#f4f4f5] text-[#0e0e0e] border border-[#e4e4e7]'
-                        : 'bg-[#0e0e0e] text-white hover:bg-neutral-800'
-                    }`}
-                  >
-                    <span>{isJoined ? '✓ Membre' : '+ Rejoindre'}</span>
-                  </button>
-                </div>
+          <div className="discover-art" aria-hidden="true">
+            <div className="art-grid" />
+            <div className="art-window">
+              <div className="art-window-header">
+                <i />
+                <i />
+                <i />
               </div>
-            )
-          })}
-        </div>
+              <span>&lt;hello, world /&gt;</span>
+              <div className="art-code-lines">
+                <i />
+                <i />
+                <i />
+              </div>
+              <div className="art-avatars">
+                <b>AD</b>
+                <b>TN</b>
+                <b>Toi</b>
+              </div>
+            </div>
+            <span className="discover-star">✳</span>
+            <span className="discover-bracket">{'{ }'}</span>
+            <span className="art-small-orbit" />
+          </div>
+        </section>
+        <section className="create-community-callout">
+          <div>
+            <h2>Ton idée mérite sa communauté.</h2>
+            <p className="muted">
+              Crée un espace, deviens son administrateur et invite tes abonnés.
+            </p>
+          </div>
+          <button
+            className="button"
+            onClick={() => {
+              if (requireAuth()) setCreating(true)
+            }}
+          >
+            Créer une communauté
+          </button>
+        </section>
+        <section id="communautes" className="discovery-results">
+          <div className="discovery-toolbar">
+            <div>
+              <h2>À chacun son terrain de jeu</h2>
+              <p className="muted">
+                Une passion en commun. Des possibilités en plus.
+              </p>
+            </div>
+            <label className="search-field">
+              <SearchIcon aria-hidden="true" />
+              <input
+                aria-label="Rechercher une communauté"
+                placeholder="Une communauté, un sujet…"
+                value={query}
+                onChange={(event) => setFilter('q', event.target.value)}
+              />
+            </label>
+          </div>
+          <div
+            className="category-filters"
+            aria-label="Catégories de communautés"
+          >
+            {categories.map((item) => (
+              <button
+                key={item}
+                className={category === item ? 'active' : ''}
+                aria-pressed={category === item}
+                onClick={() => setFilter('categorie', item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="result-meta">
+            <label className="community-kind-filter">
+              Gestion{' '}
+              <select
+                aria-label="Type de communauté"
+                value={params.get('type') ?? ''}
+                onChange={(event) => setFilter('type', event.target.value)}
+              >
+                <option value="">Toutes</option>
+                <option value="official">Officielles OpenDev</option>
+                <option value="member">Créées par les membres</option>
+              </select>
+            </label>
+            <span role="status">
+              {filtered.length} communauté{filtered.length > 1 ? 's' : ''}
+            </span>
+            {state.signedIn && (
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={joinedOnly}
+                  onChange={(event) =>
+                    setFilter('mes', event.target.checked ? '1' : '')
+                  }
+                />{' '}
+                Mes communautés
+              </label>
+            )}
+          </div>
+          <div className="communities-grid">
+            {filtered.map((community) => (
+              <CommunityCard community={community} key={community.id} />
+            ))}
+          </div>
+          {!filtered.length && (
+            <EmptyState
+              title="Pas de communauté ici pour le moment"
+              description="Essaie un autre sujet ou une autre catégorie."
+            />
+          )}
+          <div className="discover-note">
+            <span aria-hidden="true">&lt;/&gt;</span>
+            <div>
+              <strong>
+                Pas besoin d’être expert pour prendre part à la conversation.
+              </strong>
+              <p>Ta curiosité est un très bon point de départ.</p>
+            </div>
+          </div>
+        </section>
       </div>
+      {creating && <CommunityEditor onClose={() => setCreating(false)} />}
     </AppLayout>
   )
 }

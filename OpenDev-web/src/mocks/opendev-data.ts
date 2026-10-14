@@ -231,7 +231,8 @@ export const communities: Community[] = [
     badgeCount: 8,
     memberCount: '24 800 membres',
     category: 'Frontend',
-    description: 'Composants, hooks et bonnes pratiques. Construisons le web de demain.',
+    description:
+      'Composants, hooks et bonnes pratiques. Construisons le web de demain.',
     weeklyDiscussionsCount: 32,
     isJoined: true,
     role: 'Membre',
@@ -247,7 +248,8 @@ export const communities: Community[] = [
     bgColor: '#FFF7E7',
     memberCount: '18 600 membres',
     category: 'Backend',
-    description: 'Du premier script à la production : data, API et automatisation.',
+    description:
+      'Du premier script à la production : data, API et automatisation.',
     weeklyDiscussionsCount: 26,
     isJoined: true,
     role: 'Membre',
@@ -263,7 +265,8 @@ export const communities: Community[] = [
     bgColor: '#EBF9F3',
     memberCount: '9 300 membres',
     category: 'Design',
-    description: 'Des interfaces cohérentes, accessibles et pensées pour durer.',
+    description:
+      'Des interfaces cohérentes, accessibles et pensées pour durer.',
     weeklyDiscussionsCount: 18,
     isJoined: true,
     role: 'Modérateur',
@@ -279,7 +282,8 @@ export const communities: Community[] = [
     bgColor: '#F5F0FF',
     memberCount: '15 200 membres',
     category: 'Open source',
-    description: 'Trouve un projet, fais ta première PR et construis avec la communauté.',
+    description:
+      'Trouve un projet, fais ta première PR et construis avec la communauté.',
     weeklyDiscussionsCount: 24,
     isJoined: true,
     role: 'Membre',
@@ -589,6 +593,7 @@ export const popularTopics: PopularTopic[] = [
 export const upcomingEvents: CommunityEvent[] = [
   {
     id: 'ev-1',
+    date: '2026-10-12',
     month: 'OCT',
     day: '12',
     title: 'Build in public : soirée démo',
@@ -598,6 +603,7 @@ export const upcomingEvents: CommunityEvent[] = [
   },
   {
     id: 'ev-2',
+    date: '2026-10-18',
     month: 'OCT',
     day: '18',
     title: 'Atelier FastAPI + Supabase',

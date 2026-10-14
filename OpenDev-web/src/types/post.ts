@@ -12,7 +12,17 @@ export interface PostAttachment {
   downloadUrl?: string
 }
 
+export interface PostMedia {
+  id: string
+  url: string
+  name: string
+  type: 'image'
+}
+
 export interface Post {
+  media?: PostMedia[]
+  communitySlug?: string
+  createdAt?: number
   id: string
   author: {
     name: string
