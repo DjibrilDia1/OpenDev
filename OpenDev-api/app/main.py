@@ -13,6 +13,7 @@ from app.repositories.supabase_rest import SupabaseRestError
 settings = get_settings()
 
 
+# pyrefly: ignore [deprecated]
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as http_client:
@@ -42,7 +43,14 @@ app.add_middleware(
 async def handle_supabase_error(_: Request, exc: SupabaseRestError) -> JSONResponse:
     if exc.status_code in (400, 401, 403, 404, 409, 422):
         code = exc.status_code
-        detail = exc.detail
+        detail = {
+            400: "Invalid request",
+            401: "Session expired",
+            403: "Permission denied",
+            404: "Resource not found",
+            409: "This value is already in use",
+            422: "Please check the supplied fields",
+        }[code]
     else:
         code = 502
         detail = "Supabase Data API request failed"

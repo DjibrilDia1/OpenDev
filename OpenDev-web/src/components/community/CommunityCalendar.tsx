@@ -14,7 +14,7 @@ import { Modal } from '../common/Modal'
 const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 export function CommunityCalendar({ community }: { community: Community }) {
-  const { state, update, requireAuth, notify } = useDemo()
+  const { state, update, requireAuth, notify, remote } = useDemo()
   const events = useCommunityEvents().filter(
     (event) =>
       event.communitySlug === community.slug ||
@@ -23,7 +23,7 @@ export function CommunityCalendar({ community }: { community: Community }) {
   const [editing, setEditing] = useState<CommunityEvent | 'new' | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const admin = canAdministerCommunity(state, community)
+  const admin = !remote && canAdministerCommunity(state, community)
   if (!canReadCommunity(state, community)) return null
   const today = dayKey(new Date())
   const visible = events
@@ -58,6 +58,12 @@ export function CommunityCalendar({ community }: { community: Community }) {
           <button
             className="text-button"
             onClick={() => {
+              if (remote) {
+                void remote
+                  .rsvp(event.id, state.eventIds.includes(event.id))
+                  .catch((cause) => notify(cause.message))
+                return
+              }
               if (requireAuth())
                 update((previous) => ({
                   ...previous,

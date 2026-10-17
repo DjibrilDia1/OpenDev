@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SparklesIcon } from '../common/Icons'
 import { Link } from 'react-router-dom'
-import { useDemo } from '../../state/store'
-import sponsorArtwork from '../../assets/emblems/community.svg'
+import { useDemo, useCommunities } from '../../state/store'
 interface BannerSlide {
   title: string
   text: string
@@ -12,45 +11,38 @@ interface BannerSlide {
   href?: string
   cta?: string
 }
-const tips: BannerSlide[] = [
-  {
-    title: 'Le meilleur code se construit ensemble.',
-    text: 'Une question posée aujourd’hui peut débloquer le projet de quelqu’un demain.',
-    topic: 'L’esprit OpenDev',
-  },
-  {
-    title: 'Ton clavier est aussi un outil de test.',
-    text: 'Parcours ton interface avec Tab. Chaque action doit être accessible, et le focus toujours visible.',
-    topic: 'Le réflexe accessibilité',
-  },
-  {
-    title: 'Une petite PR peut avoir un grand impact.',
-    text: 'Une documentation plus claire, un exemple corrigé, un bug reproduit : chaque contribution compte.',
-    topic: 'La culture open source',
-  },
-  {
-    title: 'Explique le pourquoi, laisse parler le code.',
-    text: 'Un bon commentaire raconte une décision. Un nom explicite raconte ce que fait le code.',
-    topic: 'Le conseil du jour',
-  },
-  {
-    title: 'Votre prochaine idée commence ici.',
-    text: 'Un format pour présenter vos outils, événements et opportunités à la communauté.',
-    topic: 'Exemple publicitaire fictif',
-    sponsor: 'Studio Démo',
-    imageUrl: sponsorArtwork,
-    href: '/parametres#publicite',
-    cta: 'Découvrir le format',
-  },
-]
 export function HeroBanner() {
   const { state } = useDemo()
+  const communities = useCommunities()
+  const tips: BannerSlide[] = [
+    ...communities
+      .filter(
+        (community) =>
+          community.promotionActive && community.visibility !== 'private',
+      )
+      .map((community) => ({
+        title: community.name,
+        text: community.description,
+        topic: 'Promotion de communauté',
+        href: '/communaute/' + community.slug,
+        cta: 'Découvrir la communauté',
+      })),
+    ...state.sponsoredBanners
+      .filter((banner) => banner.active)
+      .map((banner) => ({
+        title: banner.title,
+        text: banner.text,
+        sponsor: banner.sponsor,
+        topic: 'Publicité',
+      })),
+  ]
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   useEffect(() => {
     if (
+      tips.length < 2 ||
       paused ||
       hovered ||
       focused ||
@@ -63,12 +55,14 @@ export function HeroBanner() {
       3000,
     )
     return () => clearInterval(timer)
-  }, [paused, hovered, focused, state.autoRotateBanner])
-  const tip = tips[index]
+  }, [paused, hovered, focused, state.autoRotateBanner, tips.length])
+  const activeIndex = index % (tips.length || 1)
+  const tip = tips[activeIndex]
+  if (!tip) return null
   return (
     <section
       className={'tip-banner ' + (tip.sponsor ? 'sponsored-banner' : '')}
-      aria-label="Conseils et annonces"
+      aria-label="Promotions et annonces"
       aria-roledescription="carrousel"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -82,8 +76,8 @@ export function HeroBanner() {
         <p className="tip-label">
           <SparklesIcon size={16} aria-hidden="true" />{' '}
           {tip.sponsor
-            ? `Sponsorisé · ${tip.sponsor} · Démo`
-            : 'Le saviez-vous ?'}
+            ? `Sponsorisé · ${tip.sponsor}`
+            : 'À découvrir dans la communauté'}
         </p>
         <h2>{tip.title}</h2>
         <p>{tip.text}</p>
@@ -100,11 +94,11 @@ export function HeroBanner() {
                 key={i}
                 onClick={() => setIndex(i)}
                 aria-label={'Afficher la diapositive ' + (i + 1)}
-                aria-pressed={index === i}
-                className={index === i ? 'active' : ''}
+                aria-pressed={activeIndex === i}
+                className={activeIndex === i ? 'active' : ''}
               />
             ))}
-            {state.autoRotateBanner && (
+            {tips.length > 1 && state.autoRotateBanner && (
               <button
                 className="pause-tip"
                 aria-label={

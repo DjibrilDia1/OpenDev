@@ -1,4 +1,20 @@
+export interface SignupProfile {
+  first_name?: string
+  last_name?: string
+  username?: string
+  full_name: string
+  headline: string
+  bio: string
+  location: string
+}
+
 export interface User {
+  firstName?: string
+  lastName?: string
+  company?: string
+  school?: string
+  experienceLevel?: string
+  coverUrl?: string
   id: string
   name: string
   handle: string

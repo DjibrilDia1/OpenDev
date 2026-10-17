@@ -83,3 +83,7 @@ Le [Dockerfile](Dockerfile) propose une cible `development` avec Vite et une cib
 Le workflow [web-ci.yml](../.github/workflows/web-ci.yml) s’exécute sur les push et pull requests concernés ainsi que manuellement. Il installe les dépendances, exécute ESLint, compile TypeScript, construit React et vérifie les images Docker. Le dossier `dist` est conservé comme artifact pendant 14 jours.
 
 Le build natif utilise les variables GitHub publiques existantes. Le build Docker garde le proxy `/api/v1` vers FastAPI pour l’intégration ultérieure. Le déploiement Systalink reste à configurer.
+
+## Connexion réelle aux données
+
+Le mode par défaut utilise désormais Supabase Auth et FastAPI pour un premier ensemble de parcours. Voir [LIVE_INTEGRATION.md](LIVE_INTEGRATION.md) pour les fonctions raccordées, le démarrage, les vérifications et les fonctions restant à intégrer. Les descriptions de démonstration ci-dessus s’appliquent au mode explicite `VITE_DATA_MODE=demo`.

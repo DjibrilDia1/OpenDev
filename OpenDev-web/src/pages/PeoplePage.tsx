@@ -1,15 +1,17 @@
+import { usePeople } from '../state/store'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { PersonRow } from '../components/profile/PersonRow'
 import { EmptyState } from '../components/common/EmptyState'
-import { findPerson, matches, people, profilePath } from '../state/catalog'
+import { matches, profilePath } from '../state/catalog'
 import { useDemo } from '../state/store'
 export function PeoplePage({ mode }: { mode?: 'followers' | 'following' }) {
+  const people = usePeople()
   const { handle = 'me' } = useParams()
   const { state, openAuth } = useDemo()
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
-  const user = findPerson(handle)
+  const user = people.find(person => handle === 'me' ? person.isSelf : person.handle.replace('@','') === handle.replace('@',''))
   const self = user?.isSelf
   if (mode && !user)
     return (

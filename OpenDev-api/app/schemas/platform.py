@@ -1,8 +1,16 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=60)]
@@ -14,6 +22,38 @@ class ApiModel(BaseModel):
 
 
 class ProfileUpdate(ApiModel):
+    first_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)] | None = (
+        None
+    )
+    last_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)] | None = None
+    company: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] | None = None
+    school: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] | None = None
+    experience_level: Literal["", "student", "junior", "intermediate", "senior", "lead"] | None = (
+        None
+    )
+    tags: list[
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+    ] = Field(default_factory=list, max_length=10)
+    cover_url: HttpUrl | None = None
+
+    @field_validator("avatar_url", "website_url", "github_url", "cover_url", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def unique_skills(cls, values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        result = []
+        for value in values:
+            if value.casefold() not in seen:
+                seen.add(value.casefold())
+                result.append(value)
+        return result
+
     username: Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9_.-]{3,30}$")] | None = None
     full_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] | None = (
         None
@@ -26,6 +66,63 @@ class ProfileUpdate(ApiModel):
     location: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] | None = None
 
 
+class ProfileOnboarding(ApiModel):
+    first_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)
+    ]
+    last_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
+    company: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] = ""
+    school: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] = ""
+    experience_level: Literal["", "student", "junior", "intermediate", "senior", "lead"] = ""
+    avatar_url: HttpUrl | None = None
+    interests: list[Annotated[str, StringConstraints(min_length=1, max_length=60)]] = Field(
+        min_length=1, max_length=8
+    )
+    username: Annotated[
+        str, StringConstraints(strip_whitespace=True, to_lower=True, pattern=r"^[a-z0-9_.-]{3,30}$")
+    ]
+    tags: list[
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+    ] = Field(min_length=1, max_length=10)
+    website_url: HttpUrl | None = None
+    github_url: HttpUrl | None = None
+    full_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ]
+    headline: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=140)]
+    bio: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
+    location: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] = ""
+
+    @field_validator("avatar_url", "website_url", "github_url", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def unique_skills(cls, values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        result = []
+        for value in values:
+            if value.casefold() not in seen:
+                seen.add(value.casefold())
+                result.append(value)
+        return result
+
+    @field_validator("interests")
+    @classmethod
+    def unique_interests(cls, values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        result = []
+        for value in values:
+            if value.casefold() not in seen:
+                seen.add(value.casefold())
+                result.append(value)
+        return result
+
+
 class CommunityCreate(ApiModel):
     name: ShortText
     slug: Slug
@@ -33,6 +130,13 @@ class CommunityCreate(ApiModel):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)
     ]
     tags: list[Tag] = Field(default_factory=list, max_length=8)
+
+
+class CommunityUpdate(ApiModel):
+    name: ShortText
+    description: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)
+    ]
 
 
 class PostCreate(ApiModel):

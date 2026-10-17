@@ -13,6 +13,7 @@ export type CommunityCategory =
 export type CommunityRole = 'Membre' | 'Modérateur'
 
 export interface Community {
+  promotionActive?: boolean
   visibility?: 'public' | 'private'
   coverUrl?: string
   memberIds?: string[]

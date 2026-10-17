@@ -25,6 +25,7 @@ export interface Post {
   createdAt?: number
   id: string
   author: {
+    id?: string
     name: string
     handle: string
     initials: string

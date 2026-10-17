@@ -2,21 +2,113 @@ import { useEffect, useRef, useState } from 'react'
 import { Modal } from '../common/Modal'
 import { GithubIcon } from '../common/Icons'
 import { CommunityEmblem } from '../common/CommunityEmblem'
+import { OpenDevLogo } from '../common/OpenDevLogo'
 import { useDemo, toggleItem } from '../../state/store'
 import { interests, relatedCommunities } from '../../state/catalog'
+import googleLogo from '../../assets/icons/google-g.png'
+import { EmailAuthPanel } from './EmailAuthPanel'
+import { supabase } from '../../lib/supabase'
+import { CompleteProfile } from './CompleteProfile'
+import { authErrorMessage } from '../../lib/auth-errors'
+
+function callbackError() {
+  const query = new URLSearchParams(window.location.search)
+  const hash = new URLSearchParams(window.location.hash.slice(1))
+  const code =
+    query.get('error_code') ||
+    hash.get('error_code') ||
+    query.get('error') ||
+    hash.get('error')
+  return code ? authErrorMessage({ code }) : ''
+}
 
 export function AuthFlow() {
-  const { state, update, authOpen, closeAuth, notify } = useDemo()
+  const { state, update, authOpen, closeAuth, notify, remote } = useDemo()
+  const [authError, setAuthError] = useState(callbackError)
+  const [recovery, setRecovery] = useState(
+    () =>
+      new URLSearchParams(window.location.search).get('auth') === 'recovery',
+  )
+  const [emailBusy, setEmailBusy] = useState(false)
   const [provider, setProvider] = useState('')
+  const refreshProviders = remote?.refreshProviders
+  useEffect(() => {
+    if (authOpen && refreshProviders)
+      void refreshProviders().catch(() =>
+        setAuthError(
+          'La disponibilité des connexions sociales ne peut pas être vérifiée. Réessaie.',
+        ),
+      )
+  }, [authOpen, refreshProviders])
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const hash = new URLSearchParams(url.hash.slice(1))
+    if (
+      !url.searchParams.has('error') &&
+      !url.searchParams.has('error_code') &&
+      !hash.has('error') &&
+      !hash.has('error_code')
+    )
+      return
+    for (const key of ['error', 'error_code', 'error_description']) {
+      url.searchParams.delete(key)
+      hash.delete(key)
+    }
+    url.hash = hash.toString()
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }, [])
+  function clearRecovery() {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('auth')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+    setRecovery(false)
+  }
+  useEffect(() => {
+    if (!supabase) return
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        const url = new URL(window.location.href)
+        url.searchParams.set('auth', 'recovery')
+        window.history.replaceState(
+          {},
+          '',
+          url.pathname + url.search + url.hash,
+        )
+        setRecovery(true)
+      }
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
   function close() {
+    if (provider || emailBusy) return
+    if (recovery) {
+      void remote
+        ?.signOut()
+        .then(clearRecovery)
+        .catch(() => setAuthError('La déconnexion a échoué. Réessaie.'))
+      return
+    }
+    setAuthError('')
     clearTimeout(timer.current)
     setProvider('')
     closeAuth()
   }
-  function connect(name: string) {
+  async function connect(name: string) {
     setProvider(name)
+    if (remote) {
+      setAuthError('')
+      try {
+        await remote.signIn(name === 'GitHub' ? 'github' : 'google')
+      } catch (cause) {
+        setAuthError(
+          cause instanceof Error ? cause.message : 'Connexion impossible.',
+        )
+        setProvider('')
+      }
+      return
+    }
     timer.current = setTimeout(() => {
       update((previous) => ({ ...previous, signedIn: true }))
       setProvider('')
@@ -24,14 +116,17 @@ export function AuthFlow() {
       notify('Bienvenue dans ton espace de démonstration.')
     }, 650)
   }
-  if (state.signedIn && !state.onboarded) return <Onboarding />
-  if (!authOpen) return null
+  if (!recovery && state.signedIn && !state.onboarded)
+    return remote ? <CompleteProfile key={state.profile.id} /> : <Onboarding />
+  if (!authOpen && !recovery && !authError) return null
   return (
-    <Modal title="Bienvenue sur OpenDev" onClose={close}>
-      <div className="auth-art" aria-hidden="true">
-        <span>&lt;</span>
-        <span>✳</span>
-        <span>/&gt;</span>
+    <Modal
+      title={recovery ? 'Modifier le mot de passe' : 'Se connecter à OpenDev'}
+      hideTitle
+      onClose={close}
+    >
+      <div className="auth-brand" aria-hidden="true">
+        <OpenDevLogo size={44} />
       </div>
       <h3 className="auth-heading">Le code nous rassemble.</h3>
       <p className="muted text-center">
@@ -39,37 +134,84 @@ export function AuthFlow() {
         développeurs.
       </p>
       <div className="auth-buttons">
-        <button
-          className="button"
-          disabled={!!provider}
-          onClick={() => connect('GitHub')}
-        >
-          <GithubIcon size={20} />
-          {provider === 'GitHub'
-            ? 'Connexion simulée…'
-            : 'Continuer avec GitHub'}
-        </button>
-        <button
-          className="button secondary"
-          disabled={!!provider}
-          onClick={() => connect('Google')}
-        >
-          <span className="font-bold" aria-hidden="true">
-            G
-          </span>
-          {provider === 'Google'
-            ? 'Connexion simulée…'
-            : 'Continuer avec Google'}
-        </button>
+        {remote && (
+          <EmailAuthPanel
+            key={recovery ? 'recovery' : 'standard'}
+            recovery={recovery}
+            onRecovered={() => {
+              clearRecovery()
+              closeAuth()
+            }}
+            busy={!!provider || emailBusy}
+            onBusy={setEmailBusy}
+          />
+        )}
+        {!recovery && (
+          <>
+            <button
+              className="button"
+              disabled={
+                emailBusy ||
+                !!provider ||
+                (!!remote && !remote.providers.github)
+              }
+              title={
+                remote && !remote.providers.github
+                  ? 'Connexion GitHub en attente de configuration'
+                  : undefined
+              }
+              onClick={() => connect('GitHub')}
+            >
+              <GithubIcon size={20} />
+              {provider === 'GitHub'
+                ? remote
+                  ? 'Connexion…'
+                  : 'Connexion simulée…'
+                : 'Continuer avec GitHub'}
+            </button>
+            <button
+              className="button secondary"
+              disabled={
+                emailBusy ||
+                !!provider ||
+                (!!remote && !remote.providers.google)
+              }
+              title={
+                remote && !remote.providers.google
+                  ? 'Connexion Google en attente de configuration'
+                  : undefined
+              }
+              onClick={() => connect('Google')}
+            >
+              <img
+                className="google-signin-logo"
+                src={googleLogo}
+                width={20}
+                height={20}
+                alt=""
+                aria-hidden="true"
+              />
+              {provider === 'Google'
+                ? remote
+                  ? 'Connexion…'
+                  : 'Connexion simulée…'
+                : 'Continuer avec Google'}
+            </button>
+          </>
+        )}
       </div>
-      <p className="demo-note">
-        Version de démonstration : ces boutons ouvrent un profil fictif, sans
-        connexion à ton compte GitHub ou Google. Les changements sont
-        enregistrés uniquement dans ce navigateur.
-      </p>
-      <button className="text-button centered" onClick={close}>
-        Continuer à explorer
-      </button>
+      {authError && (
+        <p role="alert" className="field-error">
+          {authError}
+        </p>
+      )}
+      {!remote && (
+        <p className="demo-note">
+          Version de démonstration : ces boutons ouvrent un profil fictif, sans
+          connexion à ton compte GitHub ou Google. Les changements sont
+          enregistrés uniquement dans ce navigateur.
+        </p>
+      )}
     </Modal>
   )
 }

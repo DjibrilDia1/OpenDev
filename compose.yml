@@ -14,6 +14,7 @@ services:
       - '127.0.0.1:${OPENDEV_API_PORT:-8000}:8000'
     volumes:
       - ./OpenDev-api/app:/app/app:ro
+      - ./OpenDev-api/tests:/app/tests:ro
     init: true
 
   web:

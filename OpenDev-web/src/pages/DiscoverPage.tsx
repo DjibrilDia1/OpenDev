@@ -7,6 +7,7 @@ import { EmptyState } from '../components/common/EmptyState'
 import { SearchIcon } from '../components/common/Icons'
 import { categories, matches } from '../state/catalog'
 import { useCommunities, useDemo } from '../state/store'
+import { interestScore } from '../lib/recommendations'
 export function DiscoverPage() {
   const communityCatalog = useCommunities()
   const [params, setParams] = useSearchParams()
@@ -26,14 +27,20 @@ export function DiscoverPage() {
       { replace: true },
     )
   }
-  const filtered = communityCatalog.filter(
-    (community) =>
-      (!params.get('type') || community.kind === params.get('type')) &&
-      (category === 'Tout' || community.category === category) &&
-      matches(community.name + ' ' + community.description, query) &&
-      (!joinedOnly ||
-        (state.signedIn && state.joined.includes(community.slug))),
-  )
+  const filtered = communityCatalog
+    .filter(
+      (community) =>
+        (!params.get('type') || community.kind === params.get('type')) &&
+        (category === 'Tout' || community.category === category) &&
+        matches(community.name + ' ' + community.description, query) &&
+        (!joinedOnly ||
+          (state.signedIn && state.joined.includes(community.slug))),
+    )
+    .sort(
+      (a, b) =>
+        interestScore(b.name + ' ' + b.description, state.interests) -
+        interestScore(a.name + ' ' + a.description, state.interests),
+    )
   return (
     <AppLayout sidebarVariant="none">
       <div className="discover-page">

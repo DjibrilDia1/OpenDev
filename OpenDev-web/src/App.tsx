@@ -1,7 +1,11 @@
 import { useEffect } from 'react'
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom'
 import { DemoProvider } from './state/DemoProvider'
+import { LiveProvider } from './state/LiveProvider'
+import { liveMode } from './lib/api'
+import { UpcomingFeaturePage } from './pages/UpcomingFeaturePage'
 import { AuthFlow } from './components/auth/AuthFlow'
+import { AccountGate } from './components/auth/AccountGate'
 import { HomePage } from './pages/HomePage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { CommunityDetailPage } from './pages/CommunityDetailPage'
@@ -43,15 +47,16 @@ function RouteEffects() {
                     : pathname.startsWith('/recherche')
                       ? 'Rechercher'
                       : 'La communauté'
-    document.title = title + ' — OpenDev'
+    document.title = title + ' OpenDev'
   }, [pathname])
   return null
 }
 export default function App() {
+  const Provider = liveMode ? LiveProvider : DemoProvider
   return (
-    <DemoProvider>
+    <Provider>
       <RouteEffects />
-      <Routes>
+      <AccountGate><Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/decouvrir" element={<DiscoverPage />} />
         <Route
@@ -74,16 +79,43 @@ export default function App() {
         <Route path="/profil" element={<MyProfilePage />} />
         <Route path="/profil/me" element={<MyProfilePage />} />
         <Route path="/profil/:handle" element={<UserProfilePage />} />
-        <Route path="/profil/:handle/abonnes" element={<FollowersPage />} />
-        <Route path="/profil/:handle/abonnements" element={<FollowingPage />} />
+        <Route path="/profil/:handle/abonnes" element={liveMode ? <UpcomingFeaturePage title="Abonnés"/> : <FollowersPage />} />
+        <Route path="/profil/:handle/abonnements" element={liveMode ? <UpcomingFeaturePage title="Abonnements"/> : <FollowingPage />} />
         <Route path="/developpeurs" element={<PeoplePage />} />
-        <Route path="/messages" element={<MessagesPage />} />
+        <Route
+          path="/messages"
+          element={
+            liveMode ? (
+              <UpcomingFeaturePage title="Messagerie" />
+            ) : (
+              <MessagesPage />
+            )
+          }
+        />
         <Route path="/parametres" element={<SettingsPage />} />
         <Route path="/evenements" element={<EventsPage />} />
         <Route path="/recherche" element={<SearchPage />} />
-        <Route path="/enregistres" element={<SavedPage />} />
+        <Route
+          path="/enregistres"
+          element={
+            liveMode ? (
+              <UpcomingFeaturePage title="Publications enregistrées" />
+            ) : (
+              <SavedPage />
+            )
+          }
+        />
         <Route path="/publication/:id" element={<PostPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route
+          path="/notifications"
+          element={
+            liveMode ? (
+              <UpcomingFeaturePage title="Notifications" />
+            ) : (
+              <NotificationsPage />
+            )
+          }
+        />
         <Route
           path="/a-propos"
           element={<Navigate to="/informations/a-propos" replace />}
@@ -98,8 +130,8 @@ export default function App() {
         />
         <Route path="/informations/:page" element={<InfoPage />} />
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+      </Routes></AccountGate>
       <AuthFlow />
-    </DemoProvider>
+    </Provider>
   )
 }

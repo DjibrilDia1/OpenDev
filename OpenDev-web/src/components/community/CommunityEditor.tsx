@@ -1,7 +1,8 @@
+import { usePeople } from '../../state/store'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal } from '../common/Modal'
-import { categories, people } from '../../state/catalog'
+import { categories } from '../../state/catalog'
 import {
   useCommunities,
   useDemo,
@@ -17,7 +18,8 @@ export function CommunityEditor({
   community?: Community
   onClose: () => void
 }) {
-  const { state, update, notify } = useDemo()
+  const people = usePeople()
+  const { state, update, notify, remote } = useDemo()
   const communities = useCommunities()
   const navigate = useNavigate()
   const [name, setName] = useState(community?.name ?? '')
@@ -29,6 +31,9 @@ export function CommunityEditor({
     community?.invitedUserIds ?? [],
   )
   const [error, setError] = useState('')
+  const [promotionActive, setPromotionActive] = useState(
+    community?.promotionActive ?? false,
+  )
   const [visibility, setVisibility] = useState(
     community?.visibility ?? 'public',
   )
@@ -44,7 +49,7 @@ export function CommunityEditor({
   )
   const canManage =
     state.signedIn && (!community || canAdministerCommunity(state, community))
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     if (!canManage) return
     if (name.trim().length < 3 || description.trim().length < 20) {
@@ -81,6 +86,7 @@ export function CommunityEditor({
       category,
       kind: community?.kind ?? 'member',
       visibility,
+      promotionActive,
       coverUrl: coverUrl || undefined,
       ownerId: community?.ownerId ?? state.profile.id,
       ownerName: community?.ownerName ?? state.profile.name,
@@ -92,6 +98,44 @@ export function CommunityEditor({
       weeklyDiscussionsCount: community?.weeklyDiscussionsCount ?? 0,
       color: '#2457c5',
       bgColor: '#edf3ff',
+    }
+    if (remote) {
+      if (
+        visibility === 'private' ||
+        coverUrl ||
+        staff.length ||
+        invited.length ||
+        promotionActive
+      ) {
+        setError(
+          'Cette première intégration prend en charge les communautés publiques avec un nom et une description. Les accès privés, rôles, images et promotions seront raccordés dans une prochaine étape.',
+        )
+        return
+      }
+      try {
+        const saved = await remote.request<{ slug: string }>(
+          community ? '/communities/' + community.id : '/communities',
+          community ? 'PATCH' : 'POST',
+          community
+            ? { name: next.name, description: next.description }
+            : {
+                name: next.name,
+                description: next.description,
+                slug: next.slug.slice(0, 60),
+                tags: [],
+              },
+        )
+        await remote.refresh()
+        onClose()
+        navigate('/communaute/' + saved.slug)
+        notify('Communauté enregistrée.')
+        return
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : 'Enregistrement impossible.',
+        )
+        return
+      }
     }
     update((previous) => ({
       ...previous,
@@ -120,6 +164,13 @@ export function CommunityEditor({
     >
       {canManage ? (
         <form className="community-editor" onSubmit={submit}>
+          {remote && (
+            <p className="small muted">
+              Pour cette première étape, tu peux créer une communauté publique
+              et modifier son nom et sa description. Les autres réglages seront
+              disponibles ensuite.
+            </p>
+          )}
           <p className="muted small">
             Personnalise ton espace et choisis qui peut accéder à ses
             conversations.
@@ -138,6 +189,7 @@ export function CommunityEditor({
             Visibilité
             <select
               value={visibility}
+              disabled={!!remote}
               onChange={(event) =>
                 setVisibility(event.target.value as 'public' | 'private')
               }
@@ -156,6 +208,7 @@ export function CommunityEditor({
             Couverture
             <input
               type="file"
+              disabled={!!remote}
               accept="image/jpeg,image/png,image/webp"
               onChange={async (event) => {
                 const file = event.target.files?.[0]
@@ -215,6 +268,7 @@ export function CommunityEditor({
             Catégorie
             <select
               value={category}
+              disabled={!!remote}
               onChange={(event) =>
                 setCategory(event.target.value as Community['category'])
               }
@@ -237,7 +291,20 @@ export function CommunityEditor({
               onChange={(event) => setDescription(event.target.value)}
             />
           </label>
-          <fieldset>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={promotionActive}
+              disabled={!!remote}
+              onChange={(event) => setPromotionActive(event.target.checked)}
+            />
+            Promouvoir la communauté dans la bannière d’accueil
+          </label>
+          <p className="small muted">
+            La promotion affiche le nom et la description des communautés
+            publiques. Désactive-la pour la retirer de l’accueil.
+          </p>
+          <fieldset disabled={!!remote}>
             <legend>Demandes d’adhésion</legend>
             {!community || !state.joinRequests[community.slug]?.length ? (
               <p className="small muted">Aucune demande en attente.</p>
@@ -296,7 +363,7 @@ export function CommunityEditor({
               ))
             )}
           </fieldset>
-          <fieldset>
+          <fieldset disabled={!!remote}>
             <legend>Inviter mes abonnés</legend>
             <p className="small muted">
               Invitations simulées, sans envoi réel. Les personnes invitées ne
@@ -320,7 +387,7 @@ export function CommunityEditor({
               <p className="muted">Tes abonnés apparaîtront ici.</p>
             )}
           </fieldset>
-          <fieldset>
+          <fieldset disabled={!!remote}>
             <legend>Équipe d’administration</legend>
             <p className="small muted">
               Le propriétaire conserve la gestion des rôles. Les administrateurs

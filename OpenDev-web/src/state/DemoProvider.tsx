@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import {
-  conversationsList,
-  currentUser,
-  djibrilProjects,
-} from '../mocks/opendev-data'
+import { currentUser } from '../mocks/opendev-data'
+import { initialState } from './initialState'
 import { seedPosts } from './catalog'
 import {
   DemoContext,
@@ -14,35 +11,6 @@ import {
   type DemoState,
 } from './store'
 
-const initialState: DemoState = {
-  communityOverrides: {},
-  joinRequests: {},
-  communityEvents: [],
-  hiddenPosts: [],
-  mutedAuthors: [],
-  reports: {},
-  moderatedPosts: [],
-  helpRequests: {},
-  readCommunities: [],
-  createdCommunities: [],
-  autoRotateBanner: true,
-  version: 1,
-  signedIn: false,
-  onboarded: false,
-  interests: [],
-  joined: [],
-  following: [],
-  liked: [],
-  saved: [],
-  comments: {},
-  posts: [],
-  profile: currentUser,
-  projects: djibrilProjects,
-  conversations: conversationsList,
-  readNotifications: false,
-  eventIds: [],
-  mutedCommunities: [],
-}
 const storageKey = 'opendev:demo:v1'
 function loadState(): DemoState {
   try {
@@ -100,6 +68,16 @@ function loadState(): DemoState {
     return {
       ...initialState,
       ...data,
+      sponsoredBanners: Array.isArray(data.sponsoredBanners)
+        ? data.sponsoredBanners.filter(
+            (banner) =>
+              banner &&
+              typeof banner.title === 'string' &&
+              typeof banner.text === 'string' &&
+              typeof banner.sponsor === 'string' &&
+              typeof banner.active === 'boolean',
+          )
+        : [],
       communityOverrides:
         data.communityOverrides &&
         typeof data.communityOverrides === 'object' &&

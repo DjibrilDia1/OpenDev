@@ -1,3 +1,4 @@
+import { OpenDevLogo } from '../common/OpenDevLogo'
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { NavIcon, type NavIconName } from '../common/NavIcon'
@@ -88,7 +89,7 @@ export function TopNav({
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
   return (
-    <header className="top-nav">
+    <header className={'top-nav' + (state.signedIn ? '' : ' guest-navigation')}>
       <div className="top-nav-inner">
         <button
           className="icon-button menu-toggle"
@@ -102,22 +103,7 @@ export function TopNav({
           />
         </button>
         <Link to="/" className="brand" aria-label="OpenDev, accueil">
-          <svg
-            className="brand-symbol"
-            width="30"
-            height="30"
-            viewBox="0 0 64 64"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="7"
-            strokeLinecap="round"
-          >
-            <path d="M33 15c-9-9-24-2-24 10v14c0 13 15 20 24 10" />
-            <path d="M31 15c9-9 24-2 24 10v14c0 13-15 20-24 10" />
-            <path d="M24 32h16" />
-          </svg>
-          OpenDev
+          <OpenDevLogo />
         </Link>
         <form
           className="global-search"

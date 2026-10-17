@@ -1,3 +1,4 @@
+import { usePeople } from '../state/store'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { EmptyState } from '../components/common/EmptyState'
@@ -5,9 +6,10 @@ import { PostCard } from '../components/feed/PostCard'
 import { CommunityCard } from '../components/community/CommunityCard'
 import { PersonRow } from '../components/profile/PersonRow'
 import { useCommunities, useDemo } from '../state/store'
-import { people, matches } from '../state/catalog'
+import { matches } from '../state/catalog'
 
 export function SearchPage() {
+  const people = usePeople()
   const communityCatalog = useCommunities()
   const [params, setParams] = useSearchParams()
   const { allPosts } = useDemo()

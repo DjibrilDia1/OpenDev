@@ -56,7 +56,8 @@ export function CreatePost({ communitySlug }: { communitySlug?: string }) {
       )
   }
   const communityCatalog = useCommunities()
-  const { state, update, notify, openAuth } = useDemo()
+  const { state, update, notify, openAuth, remote } = useDemo()
+  const [publishing, setPublishing] = useState(false)
   const [content, setContent] = useState('')
   const [media, setMedia] = useState<PostMedia[]>([])
   const [code, setCode] = useState('')
@@ -109,8 +110,9 @@ export function CreatePost({ communitySlug }: { communitySlug?: string }) {
       if (launcherInput.current) launcherInput.current.value = ''
     }
   }
-  function publish(event: FormEvent) {
+  async function publish(event: FormEvent) {
     event.preventDefault()
+    if (publishing) return
     if (!content.trim() && !media.length && !code.trim()) {
       setError('Écris quelques mots ou ajoute une image avant de publier.')
       return
@@ -147,14 +149,49 @@ export function CreatePost({ communitySlug }: { communitySlug?: string }) {
       communityName: community?.name,
       category,
     }
-    update((previous) => ({
-      ...previous,
-      posts: [post, ...previous.posts],
-      helpRequests: {
-        ...previous.helpRequests,
-        [post.id]: { requested: needsHelp },
-      },
-    }))
+    if (remote) {
+      if (media.length) {
+        setError(
+          'L’envoi d’images n’est pas encore disponible. Tu peux publier du texte et du code.',
+        )
+        return
+      }
+      setPublishing(true)
+      try {
+        await remote.request('/posts', 'POST', {
+          title: (content.trim() || 'Extrait de code').slice(0, 120),
+          body: content.trim() || 'Extrait de code partagé',
+          post_type:
+            needsHelp || category === 'Question · Entraide'
+              ? 'question'
+              : category === 'Projet · Collaboration'
+                ? 'showcase'
+                : 'discussion',
+          community_id: community?.id ?? null,
+          code_snippet: code.trim() || null,
+          tags: post.tags
+            .map((tag) => tag.toLowerCase())
+            .filter((tag) => /^[a-z0-9][a-z0-9-]{0,39}$/.test(tag))
+            .slice(0, 8),
+        })
+        await remote.refresh()
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : 'La publication a échoué.',
+        )
+        return
+      } finally {
+        setPublishing(false)
+      }
+    } else
+      update((previous) => ({
+        ...previous,
+        posts: [post, ...previous.posts],
+        helpRequests: {
+          ...previous.helpRequests,
+          [post.id]: { requested: needsHelp },
+        },
+      }))
     setNeedsHelp(false)
     setContent('')
     setMedia([])
@@ -397,7 +434,7 @@ export function CreatePost({ communitySlug }: { communitySlug?: string }) {
                 <button
                   className="button compact"
                   type="submit"
-                  disabled={busy}
+                  disabled={busy || publishing}
                 >
                   Publier
                 </button>

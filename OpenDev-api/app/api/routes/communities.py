@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from app.api.dependencies import CurrentUser, get_current_user, get_supabase_client
 from app.repositories.supabase_rest import SupabaseRestClient
-from app.schemas.platform import CommunityCreate
+from app.schemas.platform import CommunityCreate, CommunityUpdate
 from app.services.platform import CommunityService
 
 router = APIRouter(prefix="/communities", tags=["communities"])
@@ -32,6 +32,23 @@ async def create_community(
     if community is None:
         raise HTTPException(status_code=502, detail="Community could not be created")
     return community
+
+
+@router.patch("/{community_id}")
+async def update_community(
+    community_id: UUID,
+    payload: CommunityUpdate,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
+):
+    rows = await client.update(
+        "communities",
+        {"id": f"eq.{community_id}", "created_by": f"eq.{user.id}", "select": "*"},
+        payload.model_dump(mode="json"),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Community not found or not editable")
+    return rows[0]
 
 
 @router.post("/{community_id}/members/me", status_code=status.HTTP_201_CREATED)

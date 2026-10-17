@@ -1,3 +1,4 @@
+import { usePeople } from '../state/store'
 import { useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { HeroBanner } from '../components/feed/HeroBanner'
@@ -5,20 +6,21 @@ import { CreatePost } from '../components/feed/CreatePost'
 import { PostCard } from '../components/feed/PostCard'
 import { EmptyState } from '../components/common/EmptyState'
 import { useDemo } from '../state/store'
-import { people, relatedCommunities, publicationTime } from '../state/catalog'
+import { publicationTime } from '../state/catalog'
+import { feedScore } from '../lib/recommendations'
 export function HomePage() {
+  const people = usePeople()
   const { state, allPosts } = useDemo()
   const [params, setParams] = useSearchParams()
   const filter = params.get('fil') ?? 'pour-toi'
-  const suggested = relatedCommunities(state.interests).map(
-    (community) => community.slug,
-  )
+  const score = (post: (typeof allPosts)[number]) =>
+    feedScore(post, { following: state.following, joined: state.joined, interests: state.interests, technologies: state.profile.tags ?? [] })
   const visible =
     filter === 'abonnements'
       ? allPosts.filter(
           (post) =>
             state.signedIn &&
-            (state.joined.includes(post.communitySlug ?? '') ||
+            (state.joined.includes(post.communitySlug ?? '') || state.following.includes(post.author.id ?? '') ||
               people.some(
                 (user) =>
                   user.handle === post.author.handle &&
@@ -29,20 +31,13 @@ export function HomePage() {
         ? [...allPosts].sort((a, b) => publicationTime(b) - publicationTime(a))
         : [...allPosts].sort(
             (a, b) =>
-              Number(!!b.createdAt) - Number(!!a.createdAt) ||
-              Number(suggested.includes(b.communitySlug ?? '')) -
-                Number(suggested.includes(a.communitySlug ?? '')),
+              score(b) - score(a) || publicationTime(b) - publicationTime(a),
           )
   return (
     <AppLayout>
       <div className="feed-page">
         <HeroBanner />
-        <div className="page-heading">
-          <div>
-            <h1>Le fil communautaire</h1>
-            <p>Ce qu’on apprend. Ce qu’on construit. Ensemble.</p>
-          </div>
-        </div>
+        <h1 className="sr-only">Accueil</h1>
         <div className="tabs" aria-label="Filtrer les publications">
           {[
             ['pour-toi', 'Pour toi'],

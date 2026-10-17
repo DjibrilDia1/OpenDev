@@ -1,8 +1,9 @@
 import { createContext, useContext } from 'react'
 import type { Community, Conversation, Post, Project, User } from '../types'
-import { communityCatalog } from './catalog'
+import { communityCatalog, people as demoPeople } from './catalog'
 import { upcomingEvents } from '../mocks/opendev-data'
 import type { CommunityEvent } from '../types/event'
+import type { SignupProfile } from '../types/user'
 export interface Comment {
   id: string
   author: string
@@ -10,6 +11,13 @@ export interface Comment {
   text: string
 }
 export interface DemoState {
+  sponsoredBanners: {
+    id: string
+    active: boolean
+    title: string
+    text: string
+    sponsor: string
+  }[]
   communityOverrides: Record<string, Community>
   joinRequests: Record<string, string[]>
   communityEvents: CommunityEvent[]
@@ -39,6 +47,29 @@ export interface DemoState {
   mutedCommunities: string[]
 }
 export interface Store {
+  remote?: {
+    request: <T = unknown>(
+      path: string,
+      method?: string,
+      body?: unknown,
+    ) => Promise<T>
+    refresh: () => Promise<void>
+    signIn: (provider: 'github' | 'google') => Promise<void>
+    signOut: () => Promise<void>
+    emailAuth: (
+      email: string,
+      password: string,
+      signup: boolean,
+      profile?: SignupProfile,
+    ) => Promise<boolean>
+    providers: { github: boolean; google: boolean }
+    refreshProviders: () => Promise<void>
+    rsvp: (id: string, registered: boolean) => Promise<void>
+    loadComments: (id: string) => Promise<void>
+  }
+  liveCommunities?: Community[]
+  livePeople?: User[]
+  liveEvents?: CommunityEvent[]
   state: DemoState
   update: (change: (previous: DemoState) => DemoState) => void
   requireAuth: () => boolean
@@ -77,7 +108,12 @@ export function getCommunities(state: DemoState): Community[] {
 }
 
 export function useCommunities() {
-  return getCommunities(useDemo().state)
+  const store = useDemo()
+  return store.liveCommunities ?? getCommunities(store.state)
+}
+export function usePeople() {
+  const store = useDemo()
+  return store.livePeople ?? demoPeople
 }
 export function canAdministerCommunity(state: DemoState, community: Community) {
   return (
@@ -112,7 +148,8 @@ export function isCommunityMember(state: DemoState, community: Community) {
   )
 }
 export function useCommunityEvents() {
-  const { state } = useDemo()
+  const { state, liveEvents } = useDemo()
+  if (liveEvents) return liveEvents
   const communities = getCommunities(state)
   return [...upcomingEvents, ...state.communityEvents].filter((event) => {
     const community = communities.find((item) =>

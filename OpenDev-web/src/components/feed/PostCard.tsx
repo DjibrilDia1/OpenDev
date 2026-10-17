@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { usePeople } from '../../state/store'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { Post, PostMedia } from '../../types'
 import { Avatar } from '../common/Avatar'
@@ -12,7 +13,7 @@ import {
 } from '../common/Icons'
 import { Modal } from '../common/Modal'
 import { ActionDropdown } from '../common/ActionDropdown'
-import { people, profilePath } from '../../state/catalog'
+import { profilePath } from '../../state/catalog'
 import { useCommunities, useDemo } from '../../state/store'
 
 export function PostCard({
@@ -22,6 +23,7 @@ export function PostCard({
   post: Post
   expanded?: boolean
 }) {
+  const people = usePeople()
   const {
     state,
     update,
@@ -30,6 +32,7 @@ export function PostCard({
     toggleFollow,
     requireAuth,
     notify,
+    remote,
   } = useDemo()
   const communities = useCommunities()
   const [reportOpen, setReportOpen] = useState(false)
@@ -48,10 +51,21 @@ export function PostCard({
   const liked = state.signedIn && state.liked.includes(post.id)
   const saved = state.signedIn && state.saved.includes(post.id)
   const comments = state.comments[post.id] ?? []
-  const own = state.signedIn && state.posts.some((item) => item.id === post.id)
+  const loadComments = remote?.loadComments
+  useEffect(() => {
+    if (loadComments && commentsOpen)
+      void loadComments(post.id).catch((cause) =>
+        setCommentError(cause.message),
+      )
+  }, [loadComments, commentsOpen, post.id])
+  const own =
+    state.signedIn &&
+    post.author.handle === state.profile.handle &&
+    state.posts.some((item) => item.id === post.id)
   const author = people.find((person) => person.handle === post.author.handle)
   const community = communities.find((item) => item.slug === post.communitySlug)
   const canModerate =
+    !remote &&
     state.signedIn &&
     !!community &&
     (community.ownerId === state.profile.id ||
@@ -63,6 +77,12 @@ export function PostCard({
     ? comments.find((reply) => reply.id === help.solutionId)
     : undefined
   function changeHelp(requested: boolean, solutionId?: string) {
+    if (remote) {
+      notify(
+        'La résolution des demandes d’aide sera raccordée dans une prochaine étape.',
+      )
+      return
+    }
     if (!canManageHelp) return
     if (solutionId && !comments.some((reply) => reply.id === solutionId)) return
     update((previous) => ({
@@ -89,7 +109,7 @@ export function PostCard({
       setShareOpen(true)
     }
   }
-  function addComment(event: FormEvent) {
+  async function addComment(event: FormEvent) {
     event.preventDefault()
     if (!requireAuth()) return
     if (!comment.trim()) {
@@ -102,13 +122,27 @@ export function PostCard({
       initials: state.profile.avatarInitials,
       text: comment.trim(),
     }
-    update((previous) => ({
-      ...previous,
-      comments: {
-        ...previous.comments,
-        [post.id]: [...(previous.comments[post.id] ?? []), reply],
-      },
-    }))
+    if (remote) {
+      try {
+        await remote.request('/posts/' + post.id + '/comments', 'POST', {
+          body: comment.trim(),
+        })
+        await remote.refresh()
+        await remote.loadComments(post.id)
+      } catch (cause) {
+        setCommentError(
+          cause instanceof Error ? cause.message : 'Réponse non envoyée.',
+        )
+        return
+      }
+    } else
+      update((previous) => ({
+        ...previous,
+        comments: {
+          ...previous.comments,
+          [post.id]: [...(previous.comments[post.id] ?? []), reply],
+        },
+      }))
     setComment('')
     setCommentError('')
     notify('Réponse ajoutée.')
@@ -286,6 +320,12 @@ export function PostCard({
               <button
                 onClick={() => {
                   if (requireAuth()) {
+                    if (remote) {
+                      notify(
+                        'Le signalement sera disponible dans une prochaine étape.',
+                      )
+                      return
+                    }
                     setReason(
                       state.reports[post.id] ?? 'Spam ou publicité abusive',
                     )
@@ -420,7 +460,7 @@ export function PostCard({
           onClick={() => toggleLike(post.id)}
         >
           <HeartIcon size={19} className={liked ? 'fill-current' : ''} />
-          <span>{post.likesCount + Number(liked)}</span>
+          <span>{post.likesCount + (remote ? 0 : Number(liked))}</span>
         </button>
         <button
           aria-label={`${comments.length} réponses à la publication`}
@@ -523,7 +563,7 @@ export function PostCard({
           onClose={() => setEditing(false)}
         >
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
               if (!own) return
               if (
@@ -534,24 +574,39 @@ export function PostCard({
                 setEditError('Ajoute du texte avant d’enregistrer.')
                 return
               }
-              update((previous) => ({
-                ...previous,
-                posts: previous.posts.map((item) =>
-                  item.id === post.id
-                    ? {
-                        ...item,
-                        content: editText.trim(),
-                        tags: [
-                          ...new Set(
-                            editText
-                              .match(/#[\p{L}\p{N}_-]+/gu)
-                              ?.map((tag) => tag.slice(1)) ?? [],
-                          ),
-                        ],
-                      }
-                    : item,
-                ),
-              }))
+              if (remote) {
+                try {
+                  await remote.request('/posts/' + post.id, 'PATCH', {
+                    body: editText.trim(),
+                  })
+                  await remote.refresh()
+                } catch (cause) {
+                  setEditError(
+                    cause instanceof Error
+                      ? cause.message
+                      : 'Modification impossible.',
+                  )
+                  return
+                }
+              } else
+                update((previous) => ({
+                  ...previous,
+                  posts: previous.posts.map((item) =>
+                    item.id === post.id
+                      ? {
+                          ...item,
+                          content: editText.trim(),
+                          tags: [
+                            ...new Set(
+                              editText
+                                .match(/#[\p{L}\p{N}_-]+/gu)
+                                ?.map((tag) => tag.slice(1)) ?? [],
+                            ),
+                          ],
+                        }
+                      : item,
+                  ),
+                }))
               setEditing(false)
               notify('Publication mise à jour.')
             }}
@@ -691,7 +746,7 @@ export function PostCard({
           title="Supprimer cette publication ?"
           onClose={() => setConfirmDelete(false)}
         >
-          <p>La publication et ses réponses locales seront supprimées.</p>
+          <p>La publication et ses réponses seront supprimées.</p>
           <div className="modal-footer">
             <button
               className="button secondary"
@@ -701,7 +756,22 @@ export function PostCard({
             </button>
             <button
               className="button"
-              onClick={() => {
+              onClick={async () => {
+                if (remote) {
+                  try {
+                    await remote.request('/posts/' + post.id, 'DELETE')
+                    await remote.refresh()
+                    setConfirmDelete(false)
+                    notify('Publication supprimée.')
+                  } catch (cause) {
+                    notify(
+                      cause instanceof Error
+                        ? cause.message
+                        : 'Suppression impossible.',
+                    )
+                  }
+                  return
+                }
                 update((previous) => {
                   const comments = { ...previous.comments }
                   const helpRequests = { ...previous.helpRequests }

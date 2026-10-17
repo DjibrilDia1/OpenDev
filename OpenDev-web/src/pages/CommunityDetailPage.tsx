@@ -1,3 +1,4 @@
+import { usePeople } from '../state/store'
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CommunityEditor } from '../components/community/CommunityEditor'
@@ -10,7 +11,7 @@ import { CommunityVisibility } from '../components/common/CommunityVisibility'
 import { EmptyState } from '../components/common/EmptyState'
 import { PersonRow } from '../components/profile/PersonRow'
 import { BellIcon } from '../components/common/Icons'
-import { communityArt, matches, people } from '../state/catalog'
+import { communityArt, matches } from '../state/catalog'
 import {
   useCommunities,
   useDemo,
@@ -21,6 +22,7 @@ import {
 } from '../state/store'
 
 export function CommunityDetailPage() {
+  const people = usePeople()
   const [editing, setEditing] = useState(false)
   const communityCatalog = useCommunities()
   const { slug } = useParams()

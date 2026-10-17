@@ -5,11 +5,15 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  hideTitle = false,
+  className = '',
 }: {
   title: string
   children: ReactNode
   onClose: () => void
   wide?: boolean
+  hideTitle?: boolean
+  className?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
@@ -28,7 +32,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={wide ? 'modal modal-wide' : 'modal'}
+      className={(wide ? 'modal modal-wide' : 'modal') + ' ' + className}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault()
@@ -46,8 +50,14 @@ export function Modal({
           onClose()
       }}
     >
-      <div className="modal-header">
-        <h2 id={titleId}>{title}</h2>
+      <div
+        className={
+          'modal-header' + (hideTitle ? ' modal-header-title-hidden' : '')
+        }
+      >
+        <h2 id={titleId} className={hideTitle ? 'sr-only' : undefined}>
+          {title}
+        </h2>
         <button className="icon-button" aria-label="Fermer" onClick={onClose}>
           ✕
         </button>

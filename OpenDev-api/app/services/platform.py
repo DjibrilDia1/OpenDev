@@ -59,7 +59,8 @@ class DiscoveryService:
     async def people(self, *, query: str | None, limit: int, offset: int) -> list[dict[str, Any]]:
         params = _page(limit, offset, "post_count.desc,username.asc")
         params["select"] = (
-            "id,username,full_name,headline,bio,avatar_url,location,post_count,community_count"
+            "id,username,full_name,headline,bio,avatar_url,location,post_count,community_count,"
+            "tags,cover_url,website_url,github_url"
         )
         search = _safe_search(query)
         if search:
@@ -165,7 +166,12 @@ class PostService:
 
     async def comments(self, post_id: UUID, limit: int, offset: int) -> list[dict[str, Any]]:
         return await self.client.select(
-            "comments", {**_page(limit, offset, "created_at.asc"), "post_id": f"eq.{post_id}"}
+            "comments",
+            {
+                **_page(limit, offset, "created_at.asc"),
+                "select": "*,author:profiles!comments_author_id_fkey(full_name,username)",
+                "post_id": f"eq.{post_id}",
+            },
         )
 
     async def add_comment(
