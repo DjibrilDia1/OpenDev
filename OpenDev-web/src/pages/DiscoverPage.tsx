@@ -11,9 +11,18 @@ import { interestScore } from '../lib/recommendations'
 export function DiscoverPage() {
   const communityCatalog = useCommunities()
   const [params, setParams] = useSearchParams()
-  const { state, requireAuth } = useDemo()
+  const { state, requireAuth, remote } = useDemo()
   const [creating, setCreating] = useState(false)
-  const category = params.get('categorie') ?? 'Tout'
+  const visibleCategories: readonly string[] = remote
+    ? [
+        'Tout',
+        ...new Set(communityCatalog.map((community) => community.category)),
+      ]
+    : categories
+  const requestedCategory = params.get('categorie') ?? 'Tout'
+  const category = visibleCategories.includes(requestedCategory)
+    ? requestedCategory
+    : 'Tout'
   const query = params.get('q') ?? ''
   const joinedOnly = params.get('mes') === '1'
   function setFilter(key: string, value: string) {
@@ -124,7 +133,7 @@ export function DiscoverPage() {
             className="category-filters"
             aria-label="Catégories de communautés"
           >
-            {categories.map((item) => (
+            {visibleCategories.map((item) => (
               <button
                 key={item}
                 className={category === item ? 'active' : ''}

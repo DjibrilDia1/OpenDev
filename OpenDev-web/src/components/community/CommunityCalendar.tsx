@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Community } from '../../types'
 import type { CommunityEvent } from '../../types/event'
@@ -10,10 +10,91 @@ import {
   toggleItem,
 } from '../../state/store'
 import { Modal } from '../common/Modal'
+import { LiveEventCard } from './LiveEventCard'
+import { CommunityEventEditor } from './CommunityEventEditor'
+import { api } from '../../lib/api'
+import { toEvent, type EventRow } from '../../lib/adapters'
 
 const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 export function CommunityCalendar({ community }: { community: Community }) {
+  const { remote } = useDemo()
+  return remote ? (
+    <LiveCommunityCalendar community={community} />
+  ) : (
+    <DemoCommunityCalendar community={community} />
+  )
+}
+function LiveCommunityCalendar({ community }: { community: Community }) {
+  const { state, liveEvents } = useDemo()
+  const [creating, setCreating] = useState(false)
+  const [events, setEvents] = useState<CommunityEvent[]>([])
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    api<EventRow[]>(
+      `/events?community_id=${community.id}&starts_after=${encodeURIComponent(new Date().toISOString())}&limit=2`,
+    )
+      .then((rows) => {
+        if (!cancelled) {
+          setEvents(rows.map(toEvent))
+          setError('')
+        }
+      })
+      .catch(() => {
+        if (!cancelled)
+          setError('Le calendrier ne peut pas être chargé pour le moment.')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [community.id, liveEvents])
+  const allowed =
+    state.signedIn &&
+    (community.ownerId === state.profile.id ||
+      community.myPermissions?.includes('manage_events'))
+  return (
+    <section className="community-calendar">
+      <div className="section-heading">
+        <h2>À venir</h2>
+        {allowed && (
+          <button
+            className="text-button small"
+            onClick={() => setCreating(true)}
+          >
+            Organiser
+          </button>
+        )}
+      </div>
+      {events.map((event) => (
+        <LiveEventCard key={event.id} event={event} compact />
+      ))}
+      {error && (
+        <p className="small field-error" role="status">
+          {error}
+        </p>
+      )}
+      {!error && !events.length && (
+        <p className="small muted mt-3">
+          Aucun événement à venir pour le moment.
+        </p>
+      )}
+      <Link
+        className="text-button calendar-page-link"
+        to={'/evenements?communaute=' + encodeURIComponent(community.slug)}
+      >
+        Voir le calendrier complet
+      </Link>
+      {creating && (
+        <CommunityEventEditor
+          community={community}
+          onClose={() => setCreating(false)}
+        />
+      )}
+    </section>
+  )
+}
+function DemoCommunityCalendar({ community }: { community: Community }) {
   const { state, update, requireAuth, notify, remote } = useDemo()
   const events = useCommunityEvents().filter(
     (event) =>

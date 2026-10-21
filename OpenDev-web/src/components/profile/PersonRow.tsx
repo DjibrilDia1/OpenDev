@@ -3,6 +3,7 @@ import type { User } from '../../types'
 import { profilePath } from '../../state/catalog'
 import { Avatar } from '../common/Avatar'
 import { FollowButton } from '../common/FollowButton'
+import { ContributionBadge } from './ContributionBadge'
 export function PersonRow({ user }: { user: User }) {
   return (
     <div className="developer-row">
@@ -10,9 +11,12 @@ export function PersonRow({ user }: { user: User }) {
         <Avatar initials={user.avatarInitials} size="lg" />
       </Link>
       <div className="grow">
-        <Link className="post-author" to={profilePath(user.handle)}>
-          {user.name}
-        </Link>
+        <div className="person-contribution-heading">
+          <Link className="post-author" to={profilePath(user.handle)}>
+            {user.name}
+          </Link>
+          <ContributionBadge score={user.contributionScore} />
+        </div>
         <p className="muted small">
           {user.handle} · {user.roleTitle}
         </p>

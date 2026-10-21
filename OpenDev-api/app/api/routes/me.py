@@ -7,7 +7,10 @@ from app.api.dependencies import CurrentUser, get_current_user, get_supabase_cli
 from app.repositories.supabase_rest import SupabaseRestClient, SupabaseRestError
 from app.schemas.onboarding import OnboardingCatalog, OnboardingDraft
 from app.schemas.platform import ProfileOnboarding, ProfileUpdate
+from app.schemas.username import Username, username_filter
+from app.services.contributions import ContributionService
 from app.services.onboarding import OnboardingService
+from app.services.saved_posts import SavedPostService
 
 router = APIRouter(tags=["profiles"])
 
@@ -33,6 +36,7 @@ async def read_my_state(
 ) -> dict[str, Any]:
     # Every query retains the request token; no administrator client is used.
     profiles = await client.select("profiles", {"select": "*", "id": f"eq.{user.id}"})
+    profiles = await ContributionService(client).enrich(profiles)
 
     try:
         preferences = next(
@@ -75,6 +79,7 @@ async def read_my_state(
             "event_rsvps", {"select": "event_id", "user_id": f"eq.{user.id}"}
         ),
         "following": following,
+        "saved": await SavedPostService(client).identities(user.id),
     }
 
 
@@ -85,18 +90,35 @@ async def ensure_my_profile(
 ) -> dict[str, Any]:
     rows = await client.select("profiles", {"select": "*", "id": f"eq.{user.id}"})
     if rows:
-        return rows[0]
+        return await ContributionService(client).enrich_profile(rows[0])
     # Also handles accounts registered before the profile trigger was installed.
+    account_type = user.metadata.get("account_type", "individual")
+    if not isinstance(account_type, str) or account_type not in ("individual", "company"):
+        raise HTTPException(status_code=422, detail="Invalid account type")
+    raw_company_name = user.metadata.get("company_name")
+    if account_type == "company" and not isinstance(raw_company_name, str):
+        raise HTTPException(status_code=422, detail="A company name is required")
+    company_name = raw_company_name.strip() if isinstance(raw_company_name, str) else ""
+    if account_type == "company" and not 1 <= len(company_name) <= 100:
+        raise HTTPException(status_code=422, detail="A company name (1-100 characters) is required")
     profile = await client.insert(
         "profiles",
         {
             "id": user.id,
+            "account_type": account_type,
+            "company_name": company_name if account_type == "company" else None,
             "username": str(
                 user.metadata.get("username") or ("dev_" + user.id.replace("-", "")[:24])
-            ),
+            )
+            .strip()
+            .lower(),
             "first_name": str(user.metadata.get("first_name") or "")[:50],
             "last_name": str(user.metadata.get("last_name") or "")[:50],
-            "full_name": str(user.metadata.get("full_name") or "Nouveau membre")[:100],
+            "full_name": (
+                company_name
+                if account_type == "company"
+                else str(user.metadata.get("full_name") or "Nouveau membre")[:100]
+            ),
             "headline": str(user.metadata.get("headline") or "")[:140],
             "bio": str(user.metadata.get("bio") or "")[:1000],
             "location": str(user.metadata.get("location") or "")[:100],
@@ -104,7 +126,7 @@ async def ensure_my_profile(
     )
     if profile is None:
         raise HTTPException(status_code=502, detail="Profile could not be created")
-    return profile
+    return await ContributionService(client).enrich_profile(profile)
 
 
 @router.get("/me")
@@ -120,12 +142,13 @@ async def complete_my_profile(
     user: Annotated[CurrentUser, Depends(get_current_user)],
     client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
 ) -> dict[str, Any]:
-    return await OnboardingService(client).complete(payload)
+    profile = await OnboardingService(client).complete(payload)
+    return await ContributionService(client).enrich_profile(profile)
 
 
 @router.get("/me/username-availability")
 async def username_availability(
-    username: Annotated[str, Query(pattern=r"^[a-z0-9_.-]{3,30}$")],
+    username: Annotated[Username, Query()],
     user: Annotated[CurrentUser, Depends(get_current_user)],
     client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
 ) -> dict[str, bool]:
@@ -134,7 +157,7 @@ async def username_availability(
 
 @router.get("/auth/username-availability")
 async def signup_username_availability(
-    username: Annotated[str, Query(pattern=r"^[a-z0-9_.-]{3,30}$")],
+    username: Annotated[Username, Query()],
     client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
 ) -> dict[str, bool]:
     return {"available": await OnboardingService(client).username_available(username)}
@@ -182,17 +205,17 @@ async def unfollow_profile(
     return {"following": await OnboardingService(client).follow(user.id, str(profile_id), False)}
 
 
-@router.get("/profiles/{username}")
+@router.get("/profiles/{username:path}")
 async def read_profile(
-    username: Annotated[str, Path(pattern=r"^[A-Za-z0-9_.-]{3,30}$")],
+    username: Annotated[Username, Path()],
     client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
 ) -> dict[str, Any]:
     rows = await client.select(
-        "profiles", {"select": "*", "username": f"eq.{username}", "limit": "1"}
+        "profiles", {"select": "*", "username": username_filter(username), "limit": "1"}
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return rows[0]
+    return await ContributionService(client).enrich_profile(rows[0])
 
 
 @router.patch("/profiles/me")
@@ -204,7 +227,19 @@ async def update_my_profile(
     body = payload.model_dump(exclude_unset=True, mode="json")
     if not body:
         raise HTTPException(status_code=400, detail="No profile fields provided")
+    if {"account_type", "company_name", "full_name"} & body.keys():
+        current = await client.select("profiles", {"select": "*", "id": f"eq.{user.id}"})
+        if not current:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        account_type = body.get("account_type", current[0].get("account_type", "individual"))
+        if account_type == "company":
+            company_name = body.get("company_name", current[0].get("company_name"))
+            if not company_name:
+                raise HTTPException(status_code=422, detail="A company name is required")
+            body["full_name"] = company_name
+        else:
+            body["company_name"] = None
     rows = await client.update("profiles", {"id": f"eq.{user.id}", "select": "*"}, body)
     if not rows:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return rows[0]
+    return await ContributionService(client).enrich_profile(rows[0])

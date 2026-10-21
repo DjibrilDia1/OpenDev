@@ -1,6 +1,10 @@
-import type { User, Community, Post } from '../types'
+import type { User, Community, Post, PostResource } from '../types'
+import { postResourceFileUrl } from './post-resources'
 import type { CommunityEvent } from '../types/event'
 export interface ProfileRow {
+  contribution_score?: number
+  account_type?: 'individual' | 'company'
+  company_name?: string | null
   first_name?: string
   last_name?: string
   company?: string
@@ -24,6 +28,13 @@ export interface ProfileRow {
   community_count?: number
 }
 export interface CommunityRow {
+  cover_url?: string | null
+  rules?: string
+  resources?: { title: string; description: string; url: string }[]
+  weekly_discussions_count?: number
+  post_count?: number
+  is_official?: boolean
+  category?: Community['category']
   id: string
   slug: string
   name: string
@@ -33,6 +44,13 @@ export interface CommunityRow {
   tags: string[]
 }
 export interface PostRow {
+  accepted_comment_id?: string | null
+  author_score?: number
+  channel_id?: string | null
+  channel_name?: string | null
+  channel_is_read_only?: boolean | null
+  channel_archived_at?: string | null
+  resources?: PostResource[]
   id: string
   author_id: string
   author_username: string
@@ -49,6 +67,15 @@ export interface PostRow {
   comment_count: number
 }
 export interface EventRow {
+  description?: string
+  ends_at?: string
+  format?: 'online' | 'in_person'
+  registration_url?: string | null
+  capacity?: number | null
+  attendee_count?: number
+  available_seats?: number | null
+  community_id?: string | null
+  community_name?: string | null
   id: string
   title: string
   starts_at: string
@@ -64,6 +91,9 @@ export const initials = (name: string) =>
     .join('')
     .toUpperCase()
 export const toUser = (row: ProfileRow): User => ({
+  contributionScore: row.contribution_score,
+  accountType: row.account_type ?? 'individual',
+  companyName: row.company_name || undefined,
   firstName: row.first_name,
   lastName: row.last_name,
   company: row.company,
@@ -91,19 +121,35 @@ export const toCommunity = (row: CommunityRow): Community => ({
   slug: row.slug,
   name: row.name,
   description: row.description,
+  coverUrl: row.cover_url || undefined,
+  rules: row.rules ?? '',
+  resources: row.resources ?? [],
   ownerId: row.created_by,
-  kind: 'member',
+  kind: row.is_official ? 'official' : 'member',
   visibility: 'public',
-  category: 'Open source',
-  memberCount: `${row.member_count ?? 0} membres`,
-  weeklyDiscussionsCount: 0,
+  category: row.category ?? 'Open source',
+  memberCount: `${row.member_count ?? 0} ${row.member_count === 1 ? 'membre' : 'membres'}`,
+  memberCountValue: row.member_count ?? 0,
+  postCount: row.post_count,
+  weeklyDiscussionsCount: row.weekly_discussions_count ?? 0,
   color: '#333',
   bgColor: '#f1f1f3',
   invitedUserIds: [],
 })
 export const toPost = (row: PostRow): Post => ({
+  solutionCommentId: row.accepted_comment_id,
+  channelId: row.channel_id || undefined,
+  channelName: row.channel_name || undefined,
+  channelReadOnly: row.channel_is_read_only ?? false,
+  channelArchivedAt: row.channel_archived_at || undefined,
+  resources: (row.resources ?? []).map((resource) =>
+    resource.kind === 'link'
+      ? resource
+      : { ...resource, url: postResourceFileUrl(resource.path) || undefined },
+  ),
   id: row.id,
   author: {
+    contributionScore: row.author_score,
     id: row.author_id,
     name: row.author_name || row.author_username,
     handle: '@' + row.author_username,
@@ -116,7 +162,9 @@ export const toPost = (row: PostRow): Post => ({
       ? 'Question · Entraide'
       : row.post_type === 'showcase'
         ? 'Projet · Collaboration'
-        : 'Discussion',
+        : row.post_type === 'resource'
+          ? 'Ressource'
+          : 'Discussion',
   title: row.body.startsWith(row.title) ? '' : row.title,
   content: row.body,
   codeSnippet: row.code_snippet,
@@ -128,10 +176,21 @@ export const toPost = (row: PostRow): Post => ({
 })
 export const toEvent = (row: EventRow): CommunityEvent => {
   const date = new Date(row.starts_at)
+  const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   return {
     id: row.id,
     title: row.title,
-    date: row.starts_at.slice(0, 10),
+    date: localDate,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    description: row.description,
+    format: row.format,
+    registrationUrl: row.registration_url || undefined,
+    capacity: row.capacity ?? null,
+    attendeeCount: row.attendee_count ?? 0,
+    availableSeats: row.available_seats ?? null,
+    communityId: row.community_id || undefined,
+    community: row.community_name || undefined,
     day: String(date.getDate()),
     month: date.toLocaleDateString('fr-FR', { month: 'short' }),
     time: date.toLocaleTimeString('fr-FR', {

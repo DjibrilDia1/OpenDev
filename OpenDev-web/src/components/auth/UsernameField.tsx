@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { api } from '../../lib/api'
 import { useDemo } from '../../state/store'
 
-const usernamePattern = /^[a-z0-9_.-]{3,30}$/
+import { isValidUsername, normalizeUsername } from '../../lib/username'
 
 export function UsernameField({
   value,
@@ -29,11 +29,12 @@ export function UsernameField({
   } | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [touched, setTouched] = useState(false)
-  const valid = usernamePattern.test(value)
+  const valid = isValidUsername(value)
   useEffect(() => {
     onAvailabilityChange?.({
       username: value,
-      available: valid && (!live || (result?.value === value && !result.unavailable)),
+      available:
+        valid && (!live || (result?.value === value && !result.unavailable)),
     })
   }, [result, value, valid, live, onAvailabilityChange])
   useEffect(() => {
@@ -70,23 +71,25 @@ export function UsernameField({
   }, [value, valid, live, attempt])
   return (
     <div className="field username-field">
-      <label htmlFor={id + '-input'}>Nom d’utilisateur</label>
+      <label htmlFor={id + '-input'}>
+        Nom d’utilisateur <span aria-hidden="true">*</span>
+      </label>
       <div className="username-input">
         <span aria-hidden="true">@</span>
         <input
           id={id + '-input'}
           name="username"
           required
-          minLength={3}
-          maxLength={30}
-          pattern="[a-z0-9_.\-]{3,30}"
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
           value={value}
           disabled={disabled}
-          onBlur={() => setTouched(true)}
-          onChange={(event) => onChange(event.target.value.toLowerCase())}
+          onBlur={() => {
+            setTouched(true)
+            onChange(value.trim())
+          }}
+          onChange={(event) => onChange(normalizeUsername(event.target.value))}
           aria-describedby={id}
           aria-invalid={
             valid && result?.value === value && result.unavailable
@@ -99,8 +102,10 @@ export function UsernameField({
         id={id}
         role="status"
         className={
-          result?.value === value && result.unavailable
-            ? 'field-error'
+          valid && result?.value === value
+            ? result.unavailable
+              ? 'field-error'
+              : 'field-success'
             : 'muted'
         }
       >
@@ -108,9 +113,20 @@ export function UsernameField({
           ? result?.value === value
             ? result.message
             : 'Vérification de la disponibilité…'
-          : touched && !valid ? 'Choisis un nom de 3 à 30 caractères (lettres minuscules, chiffres, points, tirets ou underscores).' : ''}
+          : touched && !valid
+            ? 'Choisis un nom de 30 caractères maximum, en minuscules.'
+            : ''}
       </small>
-      {result?.value === value && result.retry && <button type="button" className="text-button" disabled={disabled} onClick={() => setAttempt(previous => previous + 1)}>Revérifier la disponibilité</button>}
+      {result?.value === value && result.retry && (
+        <button
+          type="button"
+          className="text-button"
+          disabled={disabled}
+          onClick={() => setAttempt((previous) => previous + 1)}
+        >
+          Revérifier la disponibilité
+        </button>
+      )}
     </div>
   )
 }

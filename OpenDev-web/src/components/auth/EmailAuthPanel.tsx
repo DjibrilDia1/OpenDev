@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useDemo } from '../../state/store'
 import { api } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
 import { authErrorMessage } from '../../lib/auth-errors'
 import type { SignupProfile } from '../../types'
+import { isValidUsername, normalizeUsername } from '../../lib/username'
 import './auth-flows.css'
+import { AccountTypeField } from './AccountTypeField'
 
 type Mode = 'login' | 'signup' | 'confirm' | 'forgot' | 'reset'
 
 export function EmailAuthPanel({
+  footerTarget,
   recovery = false,
   onRecovered,
   busy,
   onBusy,
 }: {
+  footerTarget: HTMLDivElement | null
   recovery?: boolean
   onRecovered: () => void
   busy: boolean
@@ -25,6 +30,10 @@ export function EmailAuthPanel({
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [firstName, setFirstName] = useState('')
+  const [accountType, setAccountType] = useState<'individual' | 'company'>(
+    'individual',
+  )
+  const [companyName, setCompanyName] = useState('')
   const [lastName, setLastName] = useState('')
   const [username, setUsername] = useState('')
   const [availability, setAvailability] = useState<{
@@ -39,7 +48,7 @@ export function EmailAuthPanel({
   const pending = useRef(false)
   const signup = mode === 'signup'
   const reset = mode === 'reset'
-  const validUsername = /^[a-z0-9_.-]{3,30}$/.test(username)
+  const validUsername = isValidUsername(username)
   useEffect(() => {
     if (!signup || !validUsername) return
     let active = true
@@ -82,7 +91,10 @@ export function EmailAuthPanel({
   }, [cooldown])
   useEffect(() => {
     if (!resetCooldown) return
-    const timer = window.setTimeout(() => setResetCooldown(value => Math.max(0, value - 1)), 1000)
+    const timer = window.setTimeout(
+      () => setResetCooldown((value) => Math.max(0, value - 1)),
+      1000,
+    )
     return () => window.clearTimeout(timer)
   }, [resetCooldown])
 
@@ -113,8 +125,18 @@ export function EmailAuthPanel({
       setError('Choisis un mot de passe avec au moins 8 caractères.')
       return
     }
-    if (signup && (!firstName.trim() || !lastName.trim() || !validUsername)) {
-      setError('Renseigne ton prénom, ton nom et un nom d’utilisateur valide.')
+    if (
+      signup &&
+      (!validUsername ||
+        (accountType === 'company'
+          ? !companyName.trim() || companyName.trim().length > 100
+          : !firstName.trim() || !lastName.trim()))
+    ) {
+      setError(
+        accountType === 'company'
+          ? 'Renseigne le nom de ton entreprise et un nom d’utilisateur valide.'
+          : 'Renseigne ton prénom, ton nom et un nom d’utilisateur valide.',
+      )
       return
     }
     pending.current = true
@@ -155,10 +177,15 @@ export function EmailAuthPanel({
             return
           }
           profile = {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
+            account_type: accountType,
+            company_name: accountType === 'company' ? companyName.trim() : null,
+            first_name: accountType === 'company' ? '' : firstName.trim(),
+            last_name: accountType === 'company' ? '' : lastName.trim(),
             username,
-            full_name: `${firstName.trim()} ${lastName.trim()}`,
+            full_name:
+              accountType === 'company'
+                ? companyName.trim()
+                : `${firstName.trim()} ${lastName.trim()}`,
             headline: '',
             bio: '',
             location: '',
@@ -258,44 +285,69 @@ export function EmailAuthPanel({
         <form className="form-stack" onSubmit={(event) => void submit(event)}>
           {signup && (
             <>
-              <div className="signup-name-fields">
+              <AccountTypeField
+                value={accountType}
+                onChange={setAccountType}
+                disabled={busy}
+              />
+              {accountType === 'company' ? (
                 <label className="field">
-                  Prénom
+                  <span>
+                    Nom de l’entreprise <span aria-hidden="true">*</span>
+                  </span>
                   <input
                     required
-                    maxLength={80}
-                    autoComplete="given-name"
-                    value={firstName}
+                    maxLength={100}
+                    autoComplete="organization"
+                    value={companyName}
                     disabled={busy}
-                    onChange={(event) => setFirstName(event.target.value)}
+                    onChange={(event) => setCompanyName(event.target.value)}
                   />
                 </label>
-                <label className="field">
-                  Nom
-                  <input
-                    required
-                    maxLength={80}
-                    autoComplete="family-name"
-                    value={lastName}
-                    disabled={busy}
-                    onChange={(event) => setLastName(event.target.value)}
-                  />
-                </label>
-              </div>
+              ) : (
+                <div className="signup-name-fields">
+                  <label className="field">
+                    <span>
+                      Prénom <span aria-hidden="true">*</span>
+                    </span>
+                    <input
+                      required
+                      maxLength={50}
+                      autoComplete="given-name"
+                      value={firstName}
+                      disabled={busy}
+                      onChange={(event) => setFirstName(event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>
+                      Nom <span aria-hidden="true">*</span>
+                    </span>
+                    <input
+                      required
+                      maxLength={50}
+                      autoComplete="family-name"
+                      value={lastName}
+                      disabled={busy}
+                      onChange={(event) => setLastName(event.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
               <label className="field">
-                Nom d’utilisateur
+                <span>
+                  Nom d’utilisateur <span aria-hidden="true">*</span>
+                </span>
                 <input
                   required
-                  minLength={3}
-                  maxLength={30}
-                  pattern="[a-z0-9_.\-]{3,30}"
-                  title="3 à 30 caractères : lettres minuscules, chiffres, points, tirets ou underscores."
+                  aria-label="Nom d’utilisateur"
                   autoComplete="username"
                   value={username}
                   disabled={busy}
                   onChange={(event) =>
-                    setUsername(event.target.value.toLowerCase())
+                    setUsername(normalizeUsername(event.target.value))
                   }
+                  onBlur={() => setUsername((value) => value.trim())}
                 />
                 {validUsername && (
                   <small
@@ -304,7 +356,9 @@ export function EmailAuthPanel({
                       availability?.value === username &&
                       !availability.available
                         ? 'field-error'
-                        : 'muted'
+                        : availability?.value === username
+                          ? 'field-success'
+                          : 'muted'
                     }
                   >
                     {availability?.value === username
@@ -326,7 +380,9 @@ export function EmailAuthPanel({
           {reset && <h3>Choisis ton nouveau mot de passe</h3>}
           {!reset && (
             <label className="field">
-              E-mail
+              <span>
+                E-mail <span aria-hidden="true">*</span>
+              </span>
               <input
                 type="email"
                 required
@@ -340,7 +396,10 @@ export function EmailAuthPanel({
           )}
           {mode !== 'forgot' && (
             <label className="field">
-              {reset ? 'Nouveau mot de passe' : 'Mot de passe'}
+              <span>
+                {reset ? 'Nouveau mot de passe' : 'Mot de passe'}{' '}
+                <span aria-hidden="true">*</span>
+              </span>
               <input
                 type="password"
                 required
@@ -357,7 +416,9 @@ export function EmailAuthPanel({
           )}
           {(signup || reset) && (
             <label className="field">
-              Confirmer le mot de passe
+              <span>
+                Confirmer le mot de passe <span aria-hidden="true">*</span>
+              </span>
               <input
                 type="password"
                 required
@@ -386,40 +447,6 @@ export function EmailAuthPanel({
                       : 'Envoyer le lien'
                     : 'Se connecter'}
           </button>
-          {mode === 'login' && (
-            <>
-              <button
-                type="button"
-                className="text-button"
-                disabled={busy}
-                onClick={() => switchMode('signup')}
-              >
-                Créer un compte
-              </button>
-              <button
-                type="button"
-                className="text-button"
-                disabled={busy}
-                onClick={() => switchMode('forgot')}
-              >
-                Mot de passe oublié ?
-              </button>
-              <button
-                type="button"
-                className="text-button"
-                disabled={busy}
-                onClick={() => {
-                  if (email.trim()) switchMode('confirm')
-                  else
-                    setError(
-                      'Renseigne ton adresse e-mail pour renvoyer la confirmation.',
-                    )
-                }}
-              >
-                Renvoyer la confirmation d’e-mail
-              </button>
-            </>
-          )}
           {signup && (
             <button
               type="button"
@@ -462,6 +489,29 @@ export function EmailAuthPanel({
           {message}
         </p>
       )}
+      {mode === 'login' &&
+        footerTarget &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy}
+              onClick={() => switchMode('signup')}
+            >
+              Créer un compte
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy}
+              onClick={() => switchMode('forgot')}
+            >
+              Mot de passe oublié ?
+            </button>
+          </>,
+          footerTarget,
+        )}
     </div>
   )
 }

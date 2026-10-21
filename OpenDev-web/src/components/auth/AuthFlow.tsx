@@ -30,6 +30,7 @@ export function AuthFlow() {
       new URLSearchParams(window.location.search).get('auth') === 'recovery',
   )
   const [emailBusy, setEmailBusy] = useState(false)
+  const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null)
   const [provider, setProvider] = useState('')
   const refreshProviders = remote?.refreshProviders
   useEffect(() => {
@@ -136,6 +137,7 @@ export function AuthFlow() {
       <div className="auth-buttons">
         {remote && (
           <EmailAuthPanel
+            footerTarget={footerTarget}
             key={recovery ? 'recovery' : 'standard'}
             recovery={recovery}
             onRecovered={() => {
@@ -205,6 +207,7 @@ export function AuthFlow() {
           {authError}
         </p>
       )}
+      <div className="auth-footer-links" ref={setFooterTarget} />
       {!remote && (
         <p className="demo-note">
           Version de démonstration : ces boutons ouvrent un profil fictif, sans

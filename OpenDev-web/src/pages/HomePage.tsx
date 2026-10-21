@@ -14,13 +14,19 @@ export function HomePage() {
   const [params, setParams] = useSearchParams()
   const filter = params.get('fil') ?? 'pour-toi'
   const score = (post: (typeof allPosts)[number]) =>
-    feedScore(post, { following: state.following, joined: state.joined, interests: state.interests, technologies: state.profile.tags ?? [] })
+    feedScore(post, {
+      following: state.following,
+      joined: state.joined,
+      interests: state.interests,
+      technologies: state.profile.tags ?? [],
+    })
   const visible =
     filter === 'abonnements'
       ? allPosts.filter(
           (post) =>
             state.signedIn &&
-            (state.joined.includes(post.communitySlug ?? '') || state.following.includes(post.author.id ?? '') ||
+            (state.joined.includes(post.communitySlug ?? '') ||
+              state.following.includes(post.author.id ?? '') ||
               people.some(
                 (user) =>
                   user.handle === post.author.handle &&
@@ -57,7 +63,7 @@ export function HomePage() {
         <CreatePost />
         <div className="post-list">
           {visible.map((post) => (
-            <PostCard post={post} key={post.id} />
+            <PostCard post={post} key={post.id} variant="overview" />
           ))}
           {!visible.length && (
             <EmptyState

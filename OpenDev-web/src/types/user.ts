@@ -1,4 +1,6 @@
 export interface SignupProfile {
+  account_type?: 'individual' | 'company'
+  company_name?: string | null
   first_name?: string
   last_name?: string
   username?: string
@@ -9,6 +11,9 @@ export interface SignupProfile {
 }
 
 export interface User {
+  contributionScore?: number
+  accountType?: 'individual' | 'company'
+  companyName?: string
   firstName?: string
   lastName?: string
   company?: string

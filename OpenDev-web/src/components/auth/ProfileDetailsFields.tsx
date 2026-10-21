@@ -1,4 +1,5 @@
 import type { SignupProfile } from '../../types'
+import { AccountTypeField } from './AccountTypeField'
 
 export function ProfileDetailsFields({
   value,
@@ -14,20 +15,50 @@ export function ProfileDetailsFields({
   }
   return (
     <>
+      <AccountTypeField
+        value={value.account_type ?? 'individual'}
+        disabled={disabled}
+        onChange={(account_type) =>
+          onChange({
+            ...value,
+            account_type,
+            company_name:
+              account_type === 'company' ? value.company_name || '' : null,
+          })
+        }
+      />
       <label className="field">
-        Nom complet
+        {value.account_type === 'company'
+          ? 'Nom de l’entreprise'
+          : 'Nom complet'}
         <input
           name="full_name"
-          autoComplete="name"
+          autoComplete={
+            value.account_type === 'company' ? 'organization' : 'name'
+          }
           required
           maxLength={100}
-          value={value.full_name}
+          value={
+            value.account_type === 'company'
+              ? value.company_name || ''
+              : value.full_name
+          }
           disabled={disabled}
-          onChange={(event) => change('full_name', event.target.value)}
+          onChange={(event) =>
+            value.account_type === 'company'
+              ? onChange({
+                  ...value,
+                  company_name: event.target.value,
+                  full_name: event.target.value,
+                })
+              : change('full_name', event.target.value)
+          }
         />
       </label>
       <label className="field">
-        Métier ou spécialité
+        {value.account_type === 'company'
+          ? 'Activité ou spécialité'
+          : 'Métier ou spécialité'}
         <input
           name="headline"
           autoComplete="organization-title"

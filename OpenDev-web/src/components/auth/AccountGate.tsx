@@ -7,15 +7,28 @@ import { OpenDevLogo } from '../common/OpenDevLogo'
 export function AccountGate({ children }: { children: ReactNode }) {
   const { state, remote, openAuth } = useDemo()
   const { pathname } = useLocation()
-  const protectedPath = /^\/(profil(?:\/me)?\/?|parametres\/?|messages(?:\/.*)?|notifications\/?|enregistres\/?)$/.test(pathname)
+  const protectedPath =
+    /^\/(profil(?:\/me)?\/?|parametres\/?|messages(?:\/.*)?|notifications\/?|enregistres\/?)$/.test(
+      pathname,
+    )
   if (remote && state.signedIn && !state.onboarded)
-    return <main className="platform-loading" aria-label="Configuration du compte"><OpenDevLogo /></main>
+    return (
+      <main className="platform-loading" aria-label="Configuration du compte">
+        <OpenDevLogo />
+      </main>
+    )
   if (protectedPath && !state.signedIn)
-    return <main className="surface" style={{ maxWidth: 560, margin: '12vh auto' }}>
-      <OpenDevLogo />
-      <h1>Connecte-toi à OpenDev</h1>
-      <p>Retrouve ton profil et ton espace personnel.</p>
-      <button className="button mt-4" onClick={openAuth}>Se connecter</button>
-    </main>
+    return (
+      <main className="surface" style={{ maxWidth: 560, margin: '12vh auto' }}>
+        <div className="auth-brand">
+          <OpenDevLogo />
+        </div>
+        <h1>Connecte-toi à OpenDev</h1>
+        <p>Retrouve ton profil et ton espace personnel.</p>
+        <button className="button mt-4" onClick={openAuth}>
+          Se connecter
+        </button>
+      </main>
+    )
   return children
 }

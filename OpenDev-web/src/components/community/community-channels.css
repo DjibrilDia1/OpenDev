@@ -1,0 +1,129 @@
+.community-channel-navigation {
+  padding: 18px;
+  margin-block: 20px 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.community-channel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.community-channel-toolbar h2 {
+  font-size: 16px;
+}
+
+.community-channel-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-block: 14px 8px;
+}
+
+.community-channel-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.community-channel-button:hover,
+.community-channel-button.active {
+  background: var(--neutral-soft);
+  color: var(--ink);
+}
+
+.community-channel-button.active {
+  border-color: var(--ink);
+  font-weight: 600;
+}
+
+.channel-badge {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.community-channel-heading {
+  padding-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.community-channel-heading h3 {
+  font-size: 17px;
+}
+
+.community-channel-heading p {
+  margin-top: 6px;
+}
+
+.channel-manager-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+.channel-manager-list > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.channel-manager-list .grow {
+  min-width: 0;
+}
+
+.channel-manager-list small {
+  display: block;
+  margin-top: 4px;
+}
+
+.channel-manager-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.channel-manager-form,
+.channel-action-confirmation {
+  padding-block: 18px 4px;
+}
+
+.channel-action-confirmation p {
+  margin-top: 10px;
+}
+
+@media (max-width: 600px) {
+  .community-channel-toolbar > .row {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .channel-manager-list > li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .channel-manager-actions {
+    justify-content: flex-start;
+  }
+}

@@ -6,7 +6,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import communities, discovery, events, health, me, posts, projects
+from app.api.routes import (
+    communications,
+    communities,
+    contributions,
+    discovery,
+    events,
+    health,
+    me,
+    posts,
+    projects,
+    saved_posts,
+)
 from app.core.config import get_settings
 from app.repositories.supabase_rest import SupabaseRestError
 
@@ -62,8 +73,11 @@ for router in (
     me.router,
     discovery.router,
     communities.router,
+    communications.router,
+    contributions.router,
     posts.router,
     projects.router,
     events.router,
+    saved_posts.router,
 ):
     app.include_router(router, prefix=settings.api_v1_prefix)

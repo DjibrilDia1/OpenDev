@@ -13,7 +13,16 @@ import {
 import { useDemo } from '../state/store'
 import { matches, profilePath } from '../state/catalog'
 import type { DirectMessage } from '../types'
+import { LiveMessagesPage } from './LiveMessagesPage'
 export function MessagesPage() {
+  const { remote, state } = useDemo()
+  return remote ? (
+    <LiveMessagesPage key={state.profile.id} />
+  ) : (
+    <DemoMessagesPage />
+  )
+}
+function DemoMessagesPage() {
   const { state, update, openAuth, notify } = useDemo()
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')

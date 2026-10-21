@@ -1,0 +1,25 @@
+.navigation-unread {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: #18181b;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.mobile-messages {
+  position: relative;
+}
+.notification-event-title {
+  display: block;
+  margin-top: 4px;
+  font-weight: 600;
+}

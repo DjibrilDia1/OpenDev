@@ -65,11 +65,26 @@ const vocabulary: Record<string, string[]> = {
   Gaming: ['gaming', 'jeu', 'jeux', 'game', 'unity', 'unreal', 'godot'],
   Web3: ['web3', 'blockchain', 'ethereum', 'solidity'],
   Startups: ['startup', 'startups', 'saas', 'produit'],
-  Entrepreneuriat: ['entrepreneuriat', 'entrepreneurship', 'entrepreneur', 'business'],
-  'Architecture logicielle': ['architecture', 'microservices', 'system design', 'ddd'],
+  Entrepreneuriat: [
+    'entrepreneuriat',
+    'entrepreneurship',
+    'entrepreneur',
+    'business',
+  ],
+  'Architecture logicielle': [
+    'architecture',
+    'microservices',
+    'system design',
+    'ddd',
+  ],
 }
 function normalize(text: string) {
-  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9+#]+/g, ' ').trim()
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+#]+/g, ' ')
+    .trim()
 }
 export function interestScore(text: string, topics: string[]): number {
   const tokens = ' ' + normalize(text) + ' '
@@ -85,13 +100,43 @@ export function interestScore(text: string, topics: string[]): number {
   )
 }
 
-export function feedScore(post: Post, preferences: { following: string[]; joined: string[]; interests: string[]; technologies: string[] }): number {
-  const text = [post.title, post.content, post.communityName, ...post.tags].join(' ')
-  const followed = !!post.author.id && preferences.following.includes(post.author.id)
+export function feedScore(
+  post: Post,
+  preferences: {
+    following: string[]
+    joined: string[]
+    interests: string[]
+    technologies: string[]
+  },
+): number {
+  const text = [
+    post.title,
+    post.content,
+    post.communityName,
+    ...post.tags,
+  ].join(' ')
+  const followed =
+    !!post.author.id && preferences.following.includes(post.author.id)
   const member = preferences.joined.includes(post.communitySlug ?? '')
   const interests = Math.min(interestScore(text, preferences.interests), 8)
-  const technologies = Math.min(interestScore(text, preferences.technologies), 10)
+  const technologies = Math.min(
+    interestScore(text, preferences.technologies),
+    10,
+  )
   const relevant = followed || member || interests > 0 || technologies > 0
-  const engagement = relevant ? Math.min(9, Math.log2(1 + Math.max(0, post.likesCount) + Math.max(0, post.repliesCount) * 2)) : 0
-  return Number(followed) * 1000 + Number(member) * 500 + interests * 20 + technologies * 10 + engagement
+  const engagement = relevant
+    ? Math.min(
+        9,
+        Math.log2(
+          1 + Math.max(0, post.likesCount) + Math.max(0, post.repliesCount) * 2,
+        ),
+      )
+    : 0
+  return (
+    Number(followed) * 1000 +
+    Number(member) * 500 +
+    interests * 20 +
+    technologies * 10 +
+    engagement
+  )
 }

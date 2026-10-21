@@ -5,9 +5,29 @@ import type { Project } from '../../types'
 import { parseSkills } from './skills'
 import { UsernameField } from '../auth/UsernameField'
 import { ApiError } from '../../lib/api'
+import { AccountTypeField } from '../auth/AccountTypeField'
 export function ProfileEditor({ onClose }: { onClose: () => void }) {
   const { state, update, notify, remote } = useDemo()
-  const [profile, setProfile] = useState(state.profile)
+  const [profile, setProfile] = useState(() => ({
+    ...state.profile,
+    accountType: state.profile.accountType ?? 'individual',
+    companyName: state.profile.companyName ?? '',
+    firstName:
+      state.profile.firstName ||
+      (state.profile.accountType !== 'company'
+        ? state.profile.name.split(/\s+/)[0]
+        : '') ||
+      '',
+    lastName:
+      state.profile.lastName ||
+      (state.profile.accountType !== 'company'
+        ? state.profile.name.split(/\s+/).slice(1).join(' ')
+        : ''),
+  }))
+  const isCompany = profile.accountType === 'company'
+  const displayName = isCompany
+    ? profile.companyName.trim()
+    : `${profile.firstName.trim()} ${profile.lastName.trim()}`.trim()
   const [username, setUsername] = useState(
     state.profile.handle.replace(/^@/, '').toLowerCase(),
   )
@@ -27,8 +47,16 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
       )
       return
     }
-    if (!profile.name.trim() || !profile.roleTitle.trim()) {
-      setError('Renseigne ton nom et ton métier avec au moins un caractère.')
+    if (
+      !displayName ||
+      (!isCompany && (!profile.firstName.trim() || !profile.lastName.trim())) ||
+      !profile.roleTitle.trim()
+    ) {
+      setError(
+        isCompany
+          ? 'Renseigne le nom de ton entreprise et son activité.'
+          : 'Renseigne ton prénom, ton nom et ton métier.',
+      )
       return
     }
     if (remote) {
@@ -43,7 +71,12 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
         }
         await remote.request('/profiles/me', 'PATCH', {
           username,
-          full_name: profile.name.trim(),
+          account_type: profile.accountType,
+          company_name: isCompany ? profile.companyName.trim() : null,
+          first_name: isCompany ? '' : profile.firstName.trim(),
+          last_name: isCompany ? '' : profile.lastName.trim(),
+          full_name: displayName,
+          ...(isCompany ? { experience_level: '', company: '' } : {}),
           headline: profile.roleTitle.trim(),
           bio: profile.bio ?? '',
           location: profile.location ?? '',
@@ -70,8 +103,11 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
         profile: {
           ...profile,
           handle: '@' + username,
-          name: profile.name.trim(),
-          avatarInitials: profile.name
+          name: displayName,
+          companyName: isCompany ? profile.companyName.trim() : undefined,
+          firstName: isCompany ? '' : profile.firstName.trim(),
+          lastName: isCompany ? '' : profile.lastName.trim(),
+          avatarInitials: displayName
             .trim()
             .split(/\s+/)
             .slice(0, 2)
@@ -88,6 +124,11 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
     <Modal title="Modifier le profil" onClose={busy ? () => {} : onClose}>
       <form className="form-stack" onSubmit={save} aria-busy={busy}>
         <fieldset className="profile-editor-fields" disabled={busy}>
+          <AccountTypeField
+            value={profile.accountType}
+            onChange={(accountType) => setProfile({ ...profile, accountType })}
+            disabled={busy}
+          />
           <UsernameField
             value={username}
             onChange={setUsername}
@@ -98,25 +139,55 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
               {error}
             </p>
           )}
+          {isCompany ? (
+            <label className="field">
+              Nom de l’entreprise <span aria-hidden="true">*</span>
+              <input
+                required
+                name="name"
+                autoComplete="organization"
+                maxLength={100}
+                value={profile.companyName}
+                onChange={(event) =>
+                  setProfile({ ...profile, companyName: event.target.value })
+                }
+              />
+            </label>
+          ) : (
+            <>
+              <label className="field">
+                Prénom <span aria-hidden="true">*</span>
+                <input
+                  required
+                  maxLength={50}
+                  autoComplete="given-name"
+                  value={profile.firstName}
+                  onChange={(event) =>
+                    setProfile({ ...profile, firstName: event.target.value })
+                  }
+                />
+              </label>
+              <label className="field">
+                Nom <span aria-hidden="true">*</span>
+                <input
+                  required
+                  maxLength={50}
+                  autoComplete="family-name"
+                  value={profile.lastName}
+                  onChange={(event) =>
+                    setProfile({ ...profile, lastName: event.target.value })
+                  }
+                />
+              </label>
+            </>
+          )}
           <label className="field">
-            Nom
-            <input
-              required
-              name="name"
-              autoComplete="name"
-              maxLength={60}
-              value={profile.name}
-              onChange={(event) =>
-                setProfile({ ...profile, name: event.target.value })
-              }
-            />
-          </label>
-          <label className="field">
-            Ton métier
+            {isCompany ? 'Activité ou spécialité' : 'Ton métier'}{' '}
+            <span aria-hidden="true">*</span>
             <input
               required
               name="role"
-              maxLength={80}
+              maxLength={140}
               value={profile.roleTitle}
               onChange={(event) =>
                 setProfile({ ...profile, roleTitle: event.target.value })

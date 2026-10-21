@@ -15,11 +15,12 @@ async def discover_communities(
     q: str | None = Query(default=None, max_length=80),
     tag: str | None = Query(default=None, pattern=r"^[a-z0-9-]{1,40}$"),
     sort: Literal["popular", "newest"] = "popular",
+    kind: Literal["official", "member"] | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     return await DiscoveryService(client).communities(
-        query=q, tag=tag, sort=sort, limit=limit, offset=offset
+        query=q, tag=tag, sort=sort, limit=limit, offset=offset, kind=kind
     )
 
 

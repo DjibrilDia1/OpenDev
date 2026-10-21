@@ -16,6 +16,23 @@
   border: 1px solid var(--border, #ddd);
   border-radius: 8px;
 }
+.auth-footer-links:not(:empty) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px 24px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.auth-footer-links .text-button {
+  padding: 0;
+  text-align: left;
+}
+.email-auth-panel .field-success {
+  color: #187154;
+}
 @media (max-width: 420px) {
   .signup-name-fields {
     grid-template-columns: 1fr;

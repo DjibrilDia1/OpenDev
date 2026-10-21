@@ -21,15 +21,24 @@ import {
 import { aminaProjects } from '../mocks/opendev-data'
 import { profilePath } from '../state/catalog'
 import { useCommunities, useDemo } from '../state/store'
-import type { Project } from '../types'
+import type { Project, User } from '../types'
 import { PencilButton } from '../components/profile/PencilButton'
 import { CompleteProfile } from '../components/auth/CompleteProfile'
 import {
   CoverEditor,
   SkillsEditor,
 } from '../components/profile/ProfileCustomization'
+import '../components/profile/profile-actions.css'
+import { ProfileContribution } from '../components/profile/ContributionSummary'
+import { ContributionBadge } from '../components/profile/ContributionBadge'
 
-export function ProfilePage({ own = false }: { own?: boolean }) {
+export function ProfilePage({
+  own = false,
+  profile,
+}: {
+  own?: boolean
+  profile?: User
+}) {
   const people = usePeople()
   const communityCatalog = useCommunities()
   const { handle = 'me' } = useParams()
@@ -46,11 +55,7 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
   const navigate = useNavigate()
   const base = own
     ? state.profile
-    : people.find((person) =>
-        handle === 'me'
-          ? person.isSelf
-          : person.handle.replace('@', '') === handle.replace('@', ''),
-      )
+    : (profile ?? people.find((person) => person.handle.slice(1) === handle))
   const self = own || !!base?.isSelf
   const user = self ? state.profile : base
   if (self && !state.signedIn)
@@ -136,7 +141,8 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
           )}
           {user.websiteUrl && (
             <a href={user.websiteUrl} target="_blank" rel="noreferrer">
-              <GlobeIcon /> Portfolio ↗
+              <GlobeIcon />{' '}
+              {user.accountType === 'company' ? 'Site web' : 'Portfolio'} ↗
             </a>
           )}
           {user.linkedinUrl && (
@@ -151,7 +157,17 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
       </section>
       {self && (
         <section>
-          <h2>Ton expérience OpenDev</h2>
+          <div className="profile-section-heading">
+            <h2>Ton expérience OpenDev</h2>
+            <PencilButton
+              label="Modifier mes centres d’intérêt"
+              onClick={() =>
+                remote
+                  ? setCustomizing('interests')
+                  : update((previous) => ({ ...previous, onboarded: false }))
+              }
+            />
+          </div>
           <p className="muted mt-2">Tes intérêts donnent le ton de ton fil.</p>
           <div className="tags mt-3">
             {state.interests.map((topic) => (
@@ -159,19 +175,15 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             ))}
           </div>
           <button
-            className="text-button mt-4"
-            onClick={() =>
-              remote
-                ? setCustomizing('interests')
-                : update((previous) => ({ ...previous, onboarded: false }))
-            }
-          >
-            Modifier mes intérêts
-          </button>
-          <button
-            className="text-button mt-4"
+            className="button profile-logout mt-4"
             onClick={() => {
-              if (remote) { void remote.signOut().then(() => navigate('/')).catch(cause => notify(cause.message)); return }
+              if (remote) {
+                void remote
+                  .signOut()
+                  .then(() => navigate('/'))
+                  .catch((cause) => notify(cause.message))
+                return
+              }
               update((previous) => ({ ...previous, signedIn: false }))
               notify('Tu es déconnecté.')
               navigate('/')
@@ -185,6 +197,10 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
   )
   function message() {
     if (!requireAuth() || !user) return
+    if (remote) {
+      navigate('/messages?to=' + encodeURIComponent(user.id))
+      return
+    }
     let conversation = state.conversations.find(
       (item) => item.participant.id === user.id,
     )
@@ -262,6 +278,9 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             </div>
           </div>
           <h1>{user.name}</h1>
+          {user.accountType === 'company' && (
+            <p className="muted">Entreprise</p>
+          )}
           <p className="muted">{user.handle}</p>
           <p className="profile-role">{user.roleTitle}</p>
           <p className="profile-bio">{user.bio}</p>
@@ -280,6 +299,7 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             )}
           </div>
           <div className="profile-stats">
+            <ContributionBadge score={user.contributionScore} />
             <Link to={path + '/abonnes'}>
               <strong>{followerCount}</strong> abonnés
             </Link>
@@ -324,23 +344,30 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             </div>
             {self && (
               <div className="row wrap">
+                <div className="profile-section-heading">
+                  <strong>Mes centres d’intérêt</strong>
+                  <PencilButton
+                    label="Modifier mes centres d’intérêt"
+                    onClick={() =>
+                      remote
+                        ? setCustomizing('interests')
+                        : update((previous) => ({
+                            ...previous,
+                            onboarded: false,
+                          }))
+                    }
+                  />
+                </div>
                 <button
-                  className="text-button"
-                  onClick={() =>
-                    remote
-                      ? setCustomizing('interests')
-                      : update((previous) => ({
-                          ...previous,
-                          onboarded: false,
-                        }))
-                  }
-                >
-                  Modifier mes intérêts
-                </button>
-                <button
-                  className="text-button"
+                  className="button profile-logout"
                   onClick={() => {
-                    if (remote) { void remote.signOut().then(() => navigate('/')).catch(cause => notify(cause.message)); return }
+                    if (remote) {
+                      void remote
+                        .signOut()
+                        .then(() => navigate('/'))
+                        .catch((cause) => notify(cause.message))
+                      return
+                    }
                     update((previous) => ({ ...previous, signedIn: false }))
                     navigate('/')
                   }}
@@ -351,6 +378,7 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             )}
           </div>
         </section>
+        <ProfileContribution userId={user.id} />
         <div className="tabs">
           {[
             ['publications', 'Publications'],

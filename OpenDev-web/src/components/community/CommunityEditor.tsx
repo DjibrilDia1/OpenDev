@@ -10,8 +10,23 @@ import {
   canAdministerCommunity,
 } from '../../state/store'
 import type { Community } from '../../types'
+import { LiveCommunityManager } from './LiveCommunityManager'
 
 export function CommunityEditor({
+  community,
+  onClose,
+}: {
+  community?: Community
+  onClose: () => void
+}) {
+  const { remote } = useDemo()
+  return remote ? (
+    <LiveCommunityManager community={community} onClose={onClose} />
+  ) : (
+    <DemoCommunityEditor community={community} onClose={onClose} />
+  )
+}
+function DemoCommunityEditor({
   community,
   onClose,
 }: {

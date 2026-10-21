@@ -57,6 +57,9 @@ export function AppLayout({
             <Link to="/enregistres" onClick={() => setMenuOpen(false)}>
               Publications enregistrées
             </Link>
+            <Link to="/notifications" onClick={() => setMenuOpen(false)}>
+              Notifications
+            </Link>
             <Link to="/developpeurs" onClick={() => setMenuOpen(false)}>
               Mon réseau
             </Link>

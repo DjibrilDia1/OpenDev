@@ -14,14 +14,26 @@ export function FollowButton({ user }: { user: User }) {
       aria-label={(following ? 'Ne plus suivre ' : 'Suivre ') + user.name}
       onClick={async () => {
         if (!requireAuth() || pending) return
-        if (!remote) { toggleFollow(user.id); return }
+        if (!remote) {
+          toggleFollow(user.id)
+          return
+        }
         setPending(true)
         try {
-          await remote.request('/profiles/' + user.id + '/follow', following ? 'DELETE' : 'PUT')
+          await remote.request(
+            '/profiles/' + user.id + '/follow',
+            following ? 'DELETE' : 'PUT',
+          )
           await remote.refresh()
         } catch (cause) {
-          notify(cause instanceof Error ? cause.message : 'Impossible de modifier cet abonnement.')
-        } finally { setPending(false) }
+          notify(
+            cause instanceof Error
+              ? cause.message
+              : 'Impossible de modifier cet abonnement.',
+          )
+        } finally {
+          setPending(false)
+        }
       }}
     >
       {pending ? '…' : following ? '✓ Suivi' : 'Suivre'}

@@ -1,7 +1,17 @@
-import reactSvg from '../../assets/emblems/react.svg'
-import pythonSvg from '../../assets/emblems/python.svg'
+import reactSvg from '../../assets/emblems/react-official.svg'
+import pythonSvg from '../../assets/emblems/python-official.svg'
+import typescriptSvg from '../../assets/emblems/typescript-official.svg'
+import fastapiPng from '../../assets/emblems/fastapi-official.png'
 import designSvg from '../../assets/emblems/designsystems.svg'
 import openSvg from '../../assets/emblems/opensource.svg'
+
+const technologyLogos: Record<string, string | undefined> = {
+  react: reactSvg,
+  python: pythonSvg,
+  typescript: typescriptSvg,
+  fastapi: fastapiPng,
+}
+
 export function CommunityEmblem({
   name,
   className = '',
@@ -11,23 +21,25 @@ export function CommunityEmblem({
   className?: string
   size?: number
 }) {
+  const technologyLogo = technologyLogos[name.trim().toLowerCase()]
   const source =
-    name === 'React'
-      ? reactSvg
-      : name === 'Python' || name === 'FastAPI'
-        ? pythonSvg
-        : name === 'Design Systems' || name === 'Creative Coding'
-          ? designSvg
-          : name === 'Open Source'
-            ? openSvg
-            : undefined
+    technologyLogo ??
+    (name === 'Design Systems' || name === 'Creative Coding'
+      ? designSvg
+      : name === 'Open Source'
+        ? openSvg
+        : undefined)
   return source ? (
     <img
       src={source}
       alt=""
       width={size}
       height={size}
-      className={'community-emblem ' + className}
+      className={
+        'community-emblem ' +
+        (technologyLogo ? 'technology-emblem ' : '') +
+        className
+      }
     />
   ) : (
     <span

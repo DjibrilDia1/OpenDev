@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from app.repositories.supabase_rest import SupabaseRestClient, SupabaseRestError
 from app.schemas.onboarding import OnboardingDraft
 from app.schemas.platform import ProfileOnboarding
+from app.schemas.username import username_filter
 
 
 class OnboardingService:
@@ -45,7 +46,7 @@ class OnboardingService:
         return result
 
     async def username_available(self, username: str, user_id: str | None = None) -> bool:
-        params = {"select": "id", "username": "ilike." + username.replace("_", r"\_"), "limit": "1"}
+        params = {"select": "id", "username": username_filter(username), "limit": "1"}
         if user_id:
             params["id"] = f"neq.{user_id}"
         return not await self.client.select("profiles", params)

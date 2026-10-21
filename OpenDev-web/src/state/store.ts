@@ -4,8 +4,14 @@ import { communityCatalog, people as demoPeople } from './catalog'
 import { upcomingEvents } from '../mocks/opendev-data'
 import type { CommunityEvent } from '../types/event'
 import type { SignupProfile } from '../types/user'
+import type { ThanksTag } from '../types/contribution'
 export interface Comment {
+  contributionScore?: number
+  thanksCount?: number
+  myThanksTag?: ThanksTag | null
+  isSolution?: boolean
   id: string
+  authorId?: string
   author: string
   initials: string
   text: string
@@ -47,6 +53,12 @@ export interface DemoState {
   mutedCommunities: string[]
 }
 export interface Store {
+  savedRevision?: number
+  savingPostIds?: string[]
+  communicationCounts?: {
+    messages_unread: number
+    notifications_unread: number
+  } | null
   remote?: {
     request: <T = unknown>(
       path: string,
@@ -54,6 +66,8 @@ export interface Store {
       body?: unknown,
     ) => Promise<T>
     refresh: () => Promise<void>
+    refreshCommunicationCounts: () => Promise<void>
+    rememberSavedPosts: (ids: string[], expectedRevision: number) => void
     signIn: (provider: 'github' | 'google') => Promise<void>
     signOut: () => Promise<void>
     emailAuth: (
@@ -79,7 +93,7 @@ export interface Store {
   notify: (message: string) => void
   toggleFollow: (id: string) => void
   toggleJoin: (slug: string) => void
-  toggleSave: (id: string) => void
+  toggleSave: (id: string) => void | Promise<void>
   toggleLike: (id: string) => void
   allPosts: Post[]
 }
@@ -119,6 +133,11 @@ export function canAdministerCommunity(state: DemoState, community: Community) {
   return (
     state.signedIn &&
     (community.ownerId === state.profile.id ||
+      !!community.myPermissions?.some((permission) =>
+        ['edit_community', 'manage_members', 'manage_events'].includes(
+          permission,
+        ),
+      ) ||
       !!community.staff?.some(
         (member) =>
           member.userId === state.profile.id &&

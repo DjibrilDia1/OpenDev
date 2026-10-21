@@ -2,10 +2,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import AwareDatetime
 
 from app.api.dependencies import CurrentUser, get_current_user, get_supabase_client
 from app.repositories.supabase_rest import SupabaseRestClient
-from app.schemas.platform import EventCreate
+from app.schemas.platform import EventCreate, EventUpdate
 from app.services.platform import EventService
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -16,8 +17,21 @@ async def list_events(
     client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    community_id: UUID | None = None,
+    starts_after: Annotated[AwareDatetime | None, Query()] = None,
+    starts_before: Annotated[AwareDatetime | None, Query()] = None,
+    include_past: bool = False,
 ):
-    return await EventService(client).list_events(limit, offset)
+    if starts_after is not None and starts_before is not None and starts_after > starts_before:
+        raise HTTPException(status_code=422, detail="Invalid event date range")
+    return await EventService(client).list_events(
+        limit,
+        offset,
+        community_id=community_id,
+        starts_after=starts_after,
+        starts_before=starts_before,
+        include_past=include_past,
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -33,6 +47,25 @@ async def create_event(
     if event is None:
         raise HTTPException(status_code=502, detail="Event could not be created")
     return event
+
+
+@router.patch("/{event_id}")
+async def update_event(
+    event_id: UUID,
+    payload: EventUpdate,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
+):
+    return await EventService(client).update(event_id, payload.model_dump(mode="json"))
+
+
+@router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_event(
+    event_id: UUID,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
+) -> None:
+    await EventService(client).delete(event_id)
 
 
 @router.get("/{event_id}")
