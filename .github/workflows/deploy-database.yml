@@ -33,7 +33,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Keep aligned with the migration validation job in api-ci.yml.
+          version: '2.121.0'
+          github-token: ${{ github.token }}
       - name: Check deployment configuration
         shell: bash
         run: |

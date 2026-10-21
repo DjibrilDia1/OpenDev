@@ -83,6 +83,8 @@ Après une modification de dépendances Python, mettre à jour le verrouillage a
 
 Les deux pipelines construisent les images de développement et de production, exécutent les tests Python ou ESLint dans les conteneurs, puis vérifient le démarrage des images de production. Les changements dans `compose*.yml` déclenchent les deux CI.
 
+La validation des migrations et le workflow manuel de déploiement utilisent tous deux Supabase CLI `2.121.0`, également utilisée pour les validations locales. Mettre à jour cette version dans les deux workflows ensemble. Une version fixe évite la résolution de `latest`; le jeton GitHub fourni à l’action permet d’authentifier ses éventuelles requêtes GitHub. Le nettoyage Supabase reste exécuté après un échec de démarrage ou de migration, uniquement si l’installation du CLI a réussi.
+
 Le déploiement Systalink sera configuré plus tard avec les domaines, HTTPS et les services retenus. Aucune image n'est publiée sur un registre pour l'instant.
 
 ## Prérequis hors Docker

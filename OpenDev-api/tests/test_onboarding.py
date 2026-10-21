@@ -46,6 +46,13 @@ class Client:
         return []
 
     async def request(self, method, resource, *, body):
+        self.calls.append((resource, {"method": method}, body))
+        assert method == "POST"
+        if resource == "rpc/contribution_scores":
+            assert body == {"p_user_ids": [OTHER]}
+            return [{"user_id": OTHER, "score": 11}]
+        assert resource == "rpc/complete_onboarding"
+        assert set(body) == {"payload"}
         raise SupabaseRestError(409, "upstream detail must not leak")
 
 
@@ -153,8 +160,13 @@ def test_username_trims_and_counts_unicode_characters(api):
 
 def test_profile_lookup_supports_unicode_and_slashes(api):
     client, db = api
-    assert client.get("/api/v1/profiles/équipe%2Fdev").status_code == 200
-    assert db.calls[-1][1]["username"] == "eq.équipe/dev"
+    response = client.get("/api/v1/profiles/équipe%2Fdev")
+    assert response.status_code == 200
+    assert response.json() == {"id": OTHER, "contribution_score": 11}
+    assert db.calls == [
+        ("profiles", {"select": "*", "username": "eq.équipe/dev", "limit": "1"}),
+        ("rpc/contribution_scores", {"method": "POST"}, {"p_user_ids": [OTHER]}),
+    ]
 
 
 def test_follow_idempotence_self_protection_and_delete_scope(api):
