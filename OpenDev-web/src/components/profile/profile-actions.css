@@ -1,0 +1,23 @@
+.button.profile-logout {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+.button.profile-logout:hover,
+.button.profile-logout:focus-visible {
+  background: #b42318;
+  border-color: #b42318;
+  color: white;
+}
+.profile-mobile-details .profile-section-heading {
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .button.profile-logout {
+    transition: none;
+  }
+}

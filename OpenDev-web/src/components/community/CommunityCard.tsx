@@ -37,11 +37,11 @@ export function CommunityCard({ community }: { community: Community }) {
         >
           {community.kind === 'member'
             ? 'Communauté de membre'
-            : 'Officielle OpenDev'}
+            : 'Administrée par OpenDev'}
         </span>
         <p className="small muted">{community.memberCount}</p>
         <p className="small muted">
-          <CommunityVisibility visibility={community.visibility}/>
+          <CommunityVisibility visibility={community.visibility} />
         </p>
         <p className="community-description">{community.description}</p>
         {community.kind === 'member' && (

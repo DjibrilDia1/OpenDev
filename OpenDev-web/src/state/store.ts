@@ -1,15 +1,29 @@
 import { createContext, useContext } from 'react'
 import type { Community, Conversation, Post, Project, User } from '../types'
-import { communityCatalog } from './catalog'
+import { communityCatalog, people as demoPeople } from './catalog'
 import { upcomingEvents } from '../mocks/opendev-data'
 import type { CommunityEvent } from '../types/event'
+import type { SignupProfile } from '../types/user'
+import type { ThanksTag } from '../types/contribution'
 export interface Comment {
+  contributionScore?: number
+  thanksCount?: number
+  myThanksTag?: ThanksTag | null
+  isSolution?: boolean
   id: string
+  authorId?: string
   author: string
   initials: string
   text: string
 }
 export interface DemoState {
+  sponsoredBanners: {
+    id: string
+    active: boolean
+    title: string
+    text: string
+    sponsor: string
+  }[]
   communityOverrides: Record<string, Community>
   joinRequests: Record<string, string[]>
   communityEvents: CommunityEvent[]
@@ -39,6 +53,37 @@ export interface DemoState {
   mutedCommunities: string[]
 }
 export interface Store {
+  savedRevision?: number
+  savingPostIds?: string[]
+  communicationCounts?: {
+    messages_unread: number
+    notifications_unread: number
+  } | null
+  remote?: {
+    request: <T = unknown>(
+      path: string,
+      method?: string,
+      body?: unknown,
+    ) => Promise<T>
+    refresh: () => Promise<void>
+    refreshCommunicationCounts: () => Promise<void>
+    rememberSavedPosts: (ids: string[], expectedRevision: number) => void
+    signIn: (provider: 'github' | 'google') => Promise<void>
+    signOut: () => Promise<void>
+    emailAuth: (
+      email: string,
+      password: string,
+      signup: boolean,
+      profile?: SignupProfile,
+    ) => Promise<boolean>
+    providers: { github: boolean; google: boolean }
+    refreshProviders: () => Promise<void>
+    rsvp: (id: string, registered: boolean) => Promise<void>
+    loadComments: (id: string) => Promise<void>
+  }
+  liveCommunities?: Community[]
+  livePeople?: User[]
+  liveEvents?: CommunityEvent[]
   state: DemoState
   update: (change: (previous: DemoState) => DemoState) => void
   requireAuth: () => boolean
@@ -48,7 +93,7 @@ export interface Store {
   notify: (message: string) => void
   toggleFollow: (id: string) => void
   toggleJoin: (slug: string) => void
-  toggleSave: (id: string) => void
+  toggleSave: (id: string) => void | Promise<void>
   toggleLike: (id: string) => void
   allPosts: Post[]
 }
@@ -77,12 +122,22 @@ export function getCommunities(state: DemoState): Community[] {
 }
 
 export function useCommunities() {
-  return getCommunities(useDemo().state)
+  const store = useDemo()
+  return store.liveCommunities ?? getCommunities(store.state)
+}
+export function usePeople() {
+  const store = useDemo()
+  return store.livePeople ?? demoPeople
 }
 export function canAdministerCommunity(state: DemoState, community: Community) {
   return (
     state.signedIn &&
     (community.ownerId === state.profile.id ||
+      !!community.myPermissions?.some((permission) =>
+        ['edit_community', 'manage_members', 'manage_events'].includes(
+          permission,
+        ),
+      ) ||
       !!community.staff?.some(
         (member) =>
           member.userId === state.profile.id &&
@@ -112,7 +167,8 @@ export function isCommunityMember(state: DemoState, community: Community) {
   )
 }
 export function useCommunityEvents() {
-  const { state } = useDemo()
+  const { state, liveEvents } = useDemo()
+  if (liveEvents) return liveEvents
   const communities = getCommunities(state)
   return [...upcomingEvents, ...state.communityEvents].filter((event) => {
     const community = communities.find((item) =>

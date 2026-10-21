@@ -1,7 +1,15 @@
+import { usePeople } from '../state/store'
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CommunityEditor } from '../components/community/CommunityEditor'
 import { CommunityCalendar } from '../components/community/CommunityCalendar'
+import { CommunityMembers } from '../components/community/CommunityMembers'
+import { LiveCommunitySidebar } from '../components/community/LiveCommunitySidebar'
+import { CommunityChannels } from '../components/community/CommunityChannels'
+import {
+  useCommunityAccess,
+  useCommunityPreview,
+} from '../components/community/communityAccess'
 import { AppLayout } from '../components/layout/AppLayout'
 import { CreatePost } from '../components/feed/CreatePost'
 import { PostCard } from '../components/feed/PostCard'
@@ -10,7 +18,7 @@ import { CommunityVisibility } from '../components/common/CommunityVisibility'
 import { EmptyState } from '../components/common/EmptyState'
 import { PersonRow } from '../components/profile/PersonRow'
 import { BellIcon } from '../components/common/Icons'
-import { communityArt, matches, people } from '../state/catalog'
+import { communityArt, matches } from '../state/catalog'
 import {
   useCommunities,
   useDemo,
@@ -21,12 +29,21 @@ import {
 } from '../state/store'
 
 export function CommunityDetailPage() {
+  const people = usePeople()
   const [editing, setEditing] = useState(false)
+  const [memberRevision, setMemberRevision] = useState(0)
   const communityCatalog = useCommunities()
   const { slug } = useParams()
-  const { state, update, allPosts, toggleJoin, requireAuth } = useDemo()
+  const { state, update, allPosts, toggleJoin, requireAuth, remote, notify } =
+    useDemo()
+  const [notificationBusy, setNotificationBusy] = useState(false)
   const [params, setParams] = useSearchParams()
   const community = communityCatalog.find((item) => item.slug === slug)
+  const accessState = useCommunityAccess(community?.id)
+  const preview = useCommunityPreview(
+    remote ? community?.id : undefined,
+    state.joined.join(',') + state.profile.id + memberRevision,
+  )
   const activeSlug = community?.slug
   useEffect(() => {
     if (
@@ -56,7 +73,7 @@ export function CommunityDetailPage() {
     state.signedIn &&
     state.joinRequests[community.slug]?.includes(state.profile.id)
   const isOwner = state.signedIn && community.ownerId === state.profile.id
-  const tab = params.get('onglet') ?? 'discussions'
+  const tab = params.get('onglet') ?? 'general'
   const canAdminister = canAdministerCommunity(state, community)
   const team = [
     {
@@ -71,7 +88,8 @@ export function CommunityDetailPage() {
     (post) =>
       post.communitySlug === slug &&
       matches(post.title + ' ' + post.content, query) &&
-      (tab === 'discussions' ||
+      (tab === 'general' ||
+        (tab === 'discussions' && post.category === 'Discussion') ||
         (tab === 'questions' && post.category === 'Question · Entraide') ||
         (tab === 'projets' && post.category === 'Projet · Collaboration') ||
         (tab === 'ressources' && post.category === 'Ressource')),
@@ -100,7 +118,36 @@ export function CommunityDetailPage() {
         (community.kind !== 'member' &&
           user.tags?.some((tag) => matches(tag, community.name))),
   )
-  const sidebar = (
+  const tabs = (
+    <div className="tabs">
+      {[
+        ['general', remote ? 'Tout' : 'Général'],
+        ['discussions', 'Discussions'],
+        ['questions', 'Entraide'],
+        ['projets', 'Projets'],
+        ['ressources', 'Ressources'],
+        ['membres', 'Membres'],
+      ].map(([key, label]) => (
+        <button
+          key={key}
+          className={key === tab ? 'active' : ''}
+          aria-pressed={key === tab}
+          onClick={() => change('onglet', key)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+  const sidebar = remote ? (
+    <LiveCommunitySidebar
+      community={community}
+      members={preview.members}
+      staff={preview.staff}
+      error={preview.error}
+      onMembers={() => change('onglet', 'membres')}
+    />
+  ) : (
     <aside className="right-sidebar">
       <CommunityCalendar community={community} />
       <section>
@@ -160,21 +207,64 @@ export function CommunityDetailPage() {
           <div className="row justify-between">
             <div>
               <h1>{community.name}</h1>
-              <p className="muted">{community.memberCount}</p>
+              <button
+                className="text-button community-header-member-link"
+                onClick={() => change('onglet', 'membres')}
+              >
+                {community.memberCount}
+              </button>
             </div>
             <div className="row">
               {joined && (
                 <button
                   className="icon-button"
                   aria-label={
-                    state.mutedCommunities.includes(community.slug)
+                    (
+                      remote
+                        ? !accessState.access?.notifications_enabled
+                        : state.mutedCommunities.includes(community.slug)
+                    )
                       ? 'Activer les notifications'
                       : 'Désactiver les notifications'
                   }
                   aria-pressed={
-                    !state.mutedCommunities.includes(community.slug)
+                    remote
+                      ? !!accessState.access?.notifications_enabled
+                      : !state.mutedCommunities.includes(community.slug)
                   }
-                  onClick={() => {
+                  disabled={
+                    notificationBusy || (!!remote && !accessState.access)
+                  }
+                  onClick={async () => {
+                    if (remote) {
+                      if (
+                        !requireAuth() ||
+                        !accessState.access ||
+                        notificationBusy
+                      )
+                        return
+                      setNotificationBusy(true)
+                      try {
+                        await remote.request(
+                          `/communities/${community.id}/notifications`,
+                          'PATCH',
+                          {
+                            enabled: !accessState.access.notifications_enabled,
+                          },
+                        )
+                        accessState.reload()
+                        await remote.refresh()
+                      } catch (cause) {
+                        notify(
+                          cause instanceof Error
+                            ? cause.message
+                            : 'Modification impossible.',
+                        )
+                      } finally {
+                        setNotificationBusy(false)
+                      }
+                      return
+                    }
                     if (requireAuth())
                       update((previous) => ({
                         ...previous,
@@ -209,7 +299,7 @@ export function CommunityDetailPage() {
           <p className="community-intro">{community.description}</p>
           <div className="community-ownership">
             <span className="community-kind">
-              <CommunityVisibility visibility={community.visibility}/>
+              <CommunityVisibility visibility={community.visibility} />
             </span>
             <span
               className={
@@ -219,13 +309,13 @@ export function CommunityDetailPage() {
             >
               {community.kind === 'member'
                 ? 'Communauté de membre'
-                : 'Officielle OpenDev'}
+                : 'Administrée par OpenDev'}
             </span>
-            <span className="small muted">
-              {community.kind === 'member'
-                ? `Administrée par ${community.ownerName}`
-                : 'Administrée par l’équipe OpenDev'}
-            </span>
+            {community.kind === 'member' && (
+              <span className="small muted">
+                Administrée par {community.ownerName}
+              </span>
+            )}
             {canAdminister && (
               <button
                 className="button secondary compact"
@@ -251,100 +341,117 @@ export function CommunityDetailPage() {
           </section>
         ) : (
           <>
-            <div className="community-calendar-mobile surface">
-              <CommunityCalendar community={community} />
-            </div>
-            <section
-              className="community-team surface"
-              aria-label="Équipe de la communauté"
-            >
-              <h2>L’équipe de la communauté</h2>
-              <div className="community-team-list">
-                {team.map((member) => {
-                  const person =
-                    member.userId === state.profile.id
-                      ? state.profile
-                      : people.find((user) => user.id === member.userId)
-                  return person ? (
-                    <Link
-                      key={member.userId}
-                      to={'/profil/' + person.handle.replace('@', '')}
-                    >
-                      <strong>{person.name}</strong>
-                      <span className="small muted">{member.role}</span>
-                    </Link>
-                  ) : null
-                })}
+            {!remote && (
+              <div className="community-calendar-mobile surface">
+                <CommunityCalendar community={community} />
               </div>
-            </section>
-            <div className="tabs">
-              {[
-                ['discussions', 'Discussions'],
-                ['questions', 'Entraide'],
-                ['projets', 'Projets'],
-                ['ressources', 'Ressources'],
-                ['membres', 'Membres'],
-              ].map(([key, label]) => (
-                <button
-                  key={key}
-                  className={key === tab ? 'active' : ''}
-                  aria-pressed={key === tab}
-                  onClick={() => change('onglet', key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {tab === 'membres' ? (
-              <section className="surface">
-                {members.map((user) => (
-                  <PersonRow user={user} key={user.id} />
-                ))}
-                {!members.length && (
-                  <EmptyState
-                    title="La communauté se construit"
-                    description="Rejoins cet espace pour apparaître parmi les premiers membres de la démo."
+            )}
+            {remote && (
+              <details className="community-sidebar-mobile surface">
+                <summary>À propos, membres et événements</summary>
+                {sidebar}
+              </details>
+            )}
+            {remote ? (
+              <CommunityChannels
+                key={community.id + ':' + state.profile.id}
+                communityId={community.id}
+                communitySlug={community.slug}
+                joined={joined}
+                canEdit={
+                  state.signedIn &&
+                  (isOwner ||
+                    !!accessState.access?.permissions.includes(
+                      'edit_community',
+                    ))
+                }
+                canPublishRestricted={
+                  state.signedIn &&
+                  (isOwner ||
+                    !!accessState.access?.permissions.some(
+                      (permission) =>
+                        permission === 'edit_community' ||
+                        permission === 'moderate_posts',
+                    ))
+                }
+                tab={tab}
+                query={query}
+                onQueryChange={(value) => change('q', value)}
+                onJoin={() => toggleJoin(community.slug)}
+                tabs={tabs}
+                members={
+                  <CommunityMembers
+                    key={community.id + ':' + joined + ':' + memberRevision}
+                    communityId={community.id}
                   />
-                )}
-              </section>
+                }
+              />
             ) : (
               <>
-                <div className="community-composer">
-                  {joined ? (
-                    <CreatePost key={slug} communitySlug={slug} />
-                  ) : (
-                    <div className="join-prompt">
-                      <p>
-                        Rejoins {community.name} pour participer à la
-                        conversation.
-                      </p>
-                      <button
-                        className="button compact"
-                        onClick={() => toggleJoin(community.slug)}
-                      >
-                        Rejoindre la communauté
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <input
-                  className="standalone-search"
-                  aria-label="Rechercher dans les discussions"
-                  value={query}
-                  onChange={(event) => change('q', event.target.value)}
-                  placeholder="Rechercher dans les discussions…"
-                />
-                <div className="post-list">
-                  {posts.map((post) => (
-                    <PostCard key={post.id} post={post} />
-                  ))}
-                  {!posts.length && (
-                    <EmptyState
-                      title="La conversation est à écrire"
-                      description="Aucune publication ne correspond à ce filtre. Change d’onglet ou lance la première discussion."
+                {tabs}
+                {tab === 'membres' ? (
+                  remote ? (
+                    <CommunityMembers
+                      key={community.id + ':' + joined + ':' + memberRevision}
+                      communityId={community.id}
                     />
-                  )}
-                </div>
+                  ) : (
+                    <section className="surface">
+                      {members.map((user) => (
+                        <PersonRow user={user} key={user.id} />
+                      ))}
+                      {!members.length && (
+                        <EmptyState
+                          title="La communauté se construit"
+                          description="Rejoins cet espace pour apparaître parmi les premiers membres de la démo."
+                        />
+                      )}
+                    </section>
+                  )
+                ) : (
+                  <>
+                    <div className="community-composer">
+                      {joined ? (
+                        <CreatePost key={slug} communitySlug={slug} />
+                      ) : (
+                        <div className="join-prompt">
+                          <p>
+                            Rejoins {community.name} pour participer à la
+                            conversation.
+                          </p>
+                          <button
+                            className="button compact"
+                            onClick={() => toggleJoin(community.slug)}
+                          >
+                            Rejoindre la communauté
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      className="standalone-search"
+                      aria-label="Rechercher dans les discussions"
+                      value={query}
+                      onChange={(event) => change('q', event.target.value)}
+                      placeholder="Rechercher dans les discussions…"
+                    />
+                    <div className="post-list">
+                      {posts.map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          variant={tab === 'general' ? 'overview' : undefined}
+                        />
+                      ))}
+                      {!posts.length && (
+                        <EmptyState
+                          title="La conversation est à écrire"
+                          description="Aucune publication ne correspond à ce filtre. Change d’onglet ou lance la première discussion."
+                        />
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </>
@@ -353,7 +460,11 @@ export function CommunityDetailPage() {
       {editing && (
         <CommunityEditor
           community={community}
-          onClose={() => setEditing(false)}
+          onClose={() => {
+            setEditing(false)
+            setMemberRevision((value) => value + 1)
+            accessState.reload()
+          }}
         />
       )}
     </AppLayout>

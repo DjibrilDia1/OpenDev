@@ -15,12 +15,21 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 async def list_posts(
     client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
     community_id: UUID | None = None,
+    channel_id: UUID | None = None,
+    post_type: Literal["discussion", "question", "showcase", "resource"] | None = None,
+    q: Annotated[str | None, Query(max_length=80)] = None,
     sort: Literal["latest", "popular"] = "latest",
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     return await PostService(client).list_posts(
-        community_id=community_id, sort=sort, limit=limit, offset=offset
+        community_id=community_id,
+        channel_id=channel_id,
+        post_type=post_type,
+        query=q,
+        sort=sort,
+        limit=limit,
+        offset=offset,
     )
 
 
@@ -98,6 +107,17 @@ async def add_comment(
     if comment is None:
         raise HTTPException(status_code=502, detail="Comment could not be created")
     return comment
+
+
+@router.delete("/{post_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    post_id: UUID,
+    comment_id: UUID,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    client: Annotated[SupabaseRestClient, Depends(get_supabase_client)],
+) -> None:
+    if not await PostService(client).delete_comment(post_id, comment_id):
+        raise HTTPException(status_code=404, detail="Comment not found or not removable")
 
 
 @router.put("/{post_id}/like", status_code=status.HTTP_204_NO_CONTENT)

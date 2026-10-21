@@ -1,0 +1,201 @@
+.communication-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.live-messenger {
+  min-width: 0;
+  height: min(740px, calc(100dvh - 180px));
+  min-height: 460px;
+}
+.live-messenger .conversation-list,
+.live-messenger .chat-panel {
+  min-width: 0;
+  min-height: 0;
+}
+.live-messenger .conversation-items {
+  overflow-y: auto;
+}
+.live-messenger .conversation-item .grow {
+  min-width: 0;
+}
+.live-messenger .conversation-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-messenger .chat-header .grow {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.live-messenger .chat-messages {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.live-messenger .message-bubble p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.live-messenger .message > div {
+  min-width: 0;
+  max-width: 100%;
+}
+.live-messenger .chat-compose {
+  flex: 0 0 auto;
+}
+.live-messenger .chat-compose textarea {
+  resize: vertical;
+  max-height: 180px;
+  min-height: 70px;
+}
+.communication-status {
+  padding: 20px;
+  font-size: 14px;
+}
+.communication-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 140px;
+}
+.communication-status .text-button,
+.communication-people .field-error .text-button {
+  display: block;
+  margin-top: 8px;
+}
+.communication-more {
+  display: block;
+  margin: 12px auto;
+  padding: 8px 12px;
+}
+.communication-mobile-back {
+  display: none;
+}
+.communication-people {
+  max-height: 50dvh;
+  overflow-y: auto;
+  margin-top: 16px;
+}
+.communication-person {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px 8px;
+  border-radius: 8px;
+}
+.communication-person:hover {
+  background: #f6f6f8;
+}
+.communication-person span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.communication-person small {
+  display: block;
+}
+.live-notifications {
+  padding: 20px;
+}
+.live-notifications .category-filters {
+  margin-bottom: 16px;
+}
+.communication-notification {
+  width: 100%;
+  text-align: left;
+  align-items: center;
+  border-radius: 8px;
+}
+.communication-notification .grow {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.communication-notification small {
+  display: block;
+  margin-top: 5px;
+}
+.communication-notification:disabled {
+  opacity: 1;
+}
+.communication-notification-open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+}
+.communication-mark-read {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.notification-kind-filters {
+  flex-wrap: wrap;
+}
+.notification-unread-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.notification-unread-filter input {
+  width: 16px;
+  height: 16px;
+  accent-color: #171719;
+}
+.communication-unread-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #171719;
+}
+.communication-activity-symbol {
+  font-size: 24px;
+  width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+@media (max-width: 700px) {
+  .communication-heading .button {
+    padding: 9px 12px;
+  }
+  .live-messenger {
+    height: calc(100dvh - 215px);
+    min-height: 370px;
+  }
+  .communication-mobile-back {
+    display: block;
+    align-self: flex-start;
+    padding: 10px 16px;
+  }
+  .live-messenger .chat-header {
+    padding: 12px;
+  }
+  .live-messenger .chat-messages {
+    padding: 12px;
+  }
+  .live-messenger .chat-compose {
+    padding: 12px;
+  }
+  .live-notifications {
+    padding: 12px;
+  }
+  .communication-notification {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .communication-notification-open {
+    flex-basis: 100%;
+    gap: 12px;
+  }
+  .communication-mark-read {
+    margin-left: 52px;
+  }
+}

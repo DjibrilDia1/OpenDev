@@ -83,13 +83,17 @@ jobs:
         working-directory: OpenDev-api
     steps:
       - uses: actions/checkout@v6
-      - uses: supabase/setup-cli@v1
+      - name: Install Supabase CLI
+        id: supabase-cli
+        uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Keep aligned with deploy-database.yml and the locally validated CLI.
+          version: '2.121.0'
+          github-token: ${{ github.token }}
       - name: Start temporary local Supabase
         run: supabase start
       - name: Apply all migrations from scratch
         run: supabase db reset --local --no-seed
       - name: Stop local Supabase
-        if: always()
+        if: ${{ always() && steps.supabase-cli.outcome == 'success' }}
         run: supabase stop --no-backup

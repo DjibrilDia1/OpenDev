@@ -1,3 +1,4 @@
+import { usePeople } from '../state/store'
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
@@ -18,21 +19,43 @@ import {
   GlobeIcon,
 } from '../components/common/Icons'
 import { aminaProjects } from '../mocks/opendev-data'
-import { findPerson, people, profilePath } from '../state/catalog'
+import { profilePath } from '../state/catalog'
 import { useCommunities, useDemo } from '../state/store'
-import type { Project } from '../types'
+import type { Project, User } from '../types'
+import { PencilButton } from '../components/profile/PencilButton'
+import { CompleteProfile } from '../components/auth/CompleteProfile'
+import {
+  CoverEditor,
+  SkillsEditor,
+} from '../components/profile/ProfileCustomization'
+import '../components/profile/profile-actions.css'
+import { ProfileContribution } from '../components/profile/ContributionSummary'
+import { ContributionBadge } from '../components/profile/ContributionBadge'
 
-export function ProfilePage({ own = false }: { own?: boolean }) {
+export function ProfilePage({
+  own = false,
+  profile,
+}: {
+  own?: boolean
+  profile?: User
+}) {
+  const people = usePeople()
   const communityCatalog = useCommunities()
   const { handle = 'me' } = useParams()
-  const { state, update, allPosts, openAuth, requireAuth, notify } = useDemo()
+  const { state, update, allPosts, openAuth, requireAuth, notify, remote } =
+    useDemo()
   const [params, setParams] = useSearchParams()
   const [editing, setEditing] = useState(false)
+  const [customizing, setCustomizing] = useState<
+    'cover' | 'skills' | 'interests' | null
+  >(null)
   const [projectEditor, setProjectEditor] = useState<Project | 'new' | null>(
     null,
   )
   const navigate = useNavigate()
-  const base = own ? state.profile : findPerson(handle)
+  const base = own
+    ? state.profile
+    : (profile ?? people.find((person) => person.handle.slice(1) === handle))
   const self = own || !!base?.isSelf
   const user = self ? state.profile : base
   if (self && !state.signedIn)
@@ -54,7 +77,7 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
       <AppLayout>
         <EmptyState
           title="Développeur introuvable"
-          description="Ce profil n’existe pas dans la démo."
+          description="Ce profil est introuvable."
           to="/developpeurs"
           label="Découvrir des développeurs"
         />
@@ -73,18 +96,33 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
   )
   const tab = params.get('onglet') ?? 'publications'
   const path = self ? '/profil/me' : profilePath(user.handle)
-  const followingCount = self
-    ? state.following.length
-    : people
-        .filter((person) => !person.isSelf && person.id !== user.id)
-        .slice(0, 4).length
-  const followerCount = self
-    ? people.filter((person) => person.followsYou).length
-    : 4 + Number(state.signedIn && state.following.includes(user.id))
+  const followingCount = remote
+    ? 0
+    : self
+      ? state.following.length
+      : people
+          .filter((person) => !person.isSelf && person.id !== user.id)
+          .slice(0, 4).length
+  const followerCount = remote
+    ? 0
+    : self
+      ? people.filter((person) => person.followsYou).length
+      : 4 + Number(state.signedIn && state.following.includes(user.id))
   const sidebar = (
     <aside className="right-sidebar">
       <section>
-        <h2>Stack & compétences</h2>
+        <div className="profile-section-heading">
+          <h2>Stack & compétences</h2>
+          {self && (
+            <PencilButton
+              label="Modifier ma stack et mes compétences"
+              onClick={() => setCustomizing('skills')}
+            />
+          )}
+        </div>
+        {!user.tags?.length && (
+          <p className="muted mt-2">Aucune compétence renseignée.</p>
+        )}
         <div className="tags mt-4">
           {user.tags?.map((tag) => (
             <Link key={tag} to={'/recherche?q=' + encodeURIComponent(tag)}>
@@ -103,7 +141,8 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
           )}
           {user.websiteUrl && (
             <a href={user.websiteUrl} target="_blank" rel="noreferrer">
-              <GlobeIcon /> Portfolio ↗
+              <GlobeIcon />{' '}
+              {user.accountType === 'company' ? 'Site web' : 'Portfolio'} ↗
             </a>
           )}
           {user.linkedinUrl && (
@@ -118,7 +157,17 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
       </section>
       {self && (
         <section>
-          <h2>Ton expérience OpenDev</h2>
+          <div className="profile-section-heading">
+            <h2>Ton expérience OpenDev</h2>
+            <PencilButton
+              label="Modifier mes centres d’intérêt"
+              onClick={() =>
+                remote
+                  ? setCustomizing('interests')
+                  : update((previous) => ({ ...previous, onboarded: false }))
+              }
+            />
+          </div>
           <p className="muted mt-2">Tes intérêts donnent le ton de ton fil.</p>
           <div className="tags mt-3">
             {state.interests.map((topic) => (
@@ -126,16 +175,15 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             ))}
           </div>
           <button
-            className="text-button mt-4"
-            onClick={() =>
-              update((previous) => ({ ...previous, onboarded: false }))
-            }
-          >
-            Modifier mes intérêts
-          </button>
-          <button
-            className="text-button mt-4"
+            className="button profile-logout mt-4"
             onClick={() => {
+              if (remote) {
+                void remote
+                  .signOut()
+                  .then(() => navigate('/'))
+                  .catch((cause) => notify(cause.message))
+                return
+              }
               update((previous) => ({ ...previous, signedIn: false }))
               notify('Tu es déconnecté.')
               navigate('/')
@@ -149,6 +197,10 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
   )
   function message() {
     if (!requireAuth() || !user) return
+    if (remote) {
+      navigate('/messages?to=' + encodeURIComponent(user.id))
+      return
+    }
     let conversation = state.conversations.find(
       (item) => item.participant.id === user.id,
     )
@@ -179,26 +231,42 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
   return (
     <AppLayout customRightSidebar={sidebar}>
       <div className="profile-page">
-        <div className="profile-banner" aria-hidden="true">
-          <span>&lt;build. share. repeat /&gt;</span>
-          <i />
-          <b>✳</b>
+        <div className="profile-banner">
+          {user.coverUrl ? (
+            <img
+              className="profile-cover-image"
+              src={user.coverUrl}
+              alt="Couverture du profil"
+            />
+          ) : (
+            <>
+              <span aria-hidden="true">&lt;build. share. repeat /&gt;</span>
+              <i aria-hidden="true" />
+              <b aria-hidden="true">✳</b>
+            </>
+          )}
+          {self && (
+            <PencilButton
+              label="Modifier la couverture"
+              className="profile-cover-edit"
+              onClick={() => setCustomizing('cover')}
+            />
+          )}
         </div>
         <section className="profile-summary">
           <div className="profile-avatar-row">
             <Avatar
               initials={user.avatarInitials}
+              imageUrl={user.avatarUrl}
               size="lg"
               className="profile-avatar"
             />
             <div className="row">
               {self ? (
-                <button
-                  className="button secondary"
+                <PencilButton
+                  label="Modifier le profil"
                   onClick={() => setEditing(true)}
-                >
-                  Modifier le profil
-                </button>
+                />
               ) : (
                 <>
                   <button className="button secondary" onClick={message}>
@@ -210,6 +278,9 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             </div>
           </div>
           <h1>{user.name}</h1>
+          {user.accountType === 'company' && (
+            <p className="muted">Entreprise</p>
+          )}
           <p className="muted">{user.handle}</p>
           <p className="profile-role">{user.roleTitle}</p>
           <p className="profile-bio">{user.bio}</p>
@@ -228,6 +299,7 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             )}
           </div>
           <div className="profile-stats">
+            <ContributionBadge score={user.contributionScore} />
             <Link to={path + '/abonnes'}>
               <strong>{followerCount}</strong> abonnés
             </Link>
@@ -239,6 +311,15 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             </span>
           </div>
           <div className="profile-mobile-details">
+            {self && (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setCustomizing('skills')}
+              >
+                Modifier ma stack et mes compétences
+              </button>
+            )}
             <div className="tags">
               {user.tags?.map((tag) => (
                 <span key={tag}>{tag}</span>
@@ -263,17 +344,30 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             </div>
             {self && (
               <div className="row wrap">
+                <div className="profile-section-heading">
+                  <strong>Mes centres d’intérêt</strong>
+                  <PencilButton
+                    label="Modifier mes centres d’intérêt"
+                    onClick={() =>
+                      remote
+                        ? setCustomizing('interests')
+                        : update((previous) => ({
+                            ...previous,
+                            onboarded: false,
+                          }))
+                    }
+                  />
+                </div>
                 <button
-                  className="text-button"
-                  onClick={() =>
-                    update((previous) => ({ ...previous, onboarded: false }))
-                  }
-                >
-                  Modifier mes intérêts
-                </button>
-                <button
-                  className="text-button"
+                  className="button profile-logout"
                   onClick={() => {
+                    if (remote) {
+                      void remote
+                        .signOut()
+                        .then(() => navigate('/'))
+                        .catch((cause) => notify(cause.message))
+                      return
+                    }
                     update((previous) => ({ ...previous, signedIn: false }))
                     navigate('/')
                   }}
@@ -284,6 +378,7 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
             )}
           </div>
         </section>
+        <ProfileContribution userId={user.id} />
         <div className="tabs">
           {[
             ['publications', 'Publications'],
@@ -399,6 +494,15 @@ export function ProfilePage({ own = false }: { own?: boolean }) {
         )}
       </div>
       {editing && <ProfileEditor onClose={() => setEditing(false)} />}
+      {customizing === 'interests' && (
+        <CompleteProfile initialStep={2} onClose={() => setCustomizing(null)} />
+      )}
+      {customizing === 'cover' && (
+        <CoverEditor onClose={() => setCustomizing(null)} />
+      )}
+      {customizing === 'skills' && (
+        <SkillsEditor onClose={() => setCustomizing(null)} />
+      )}
       {projectEditor && (
         <ProjectEditor
           project={projectEditor === 'new' ? undefined : projectEditor}

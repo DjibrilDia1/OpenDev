@@ -58,8 +58,13 @@ export const people: User[] = [
     tags: ['Communauté', 'Entraide'],
   },
 ]
-export const profilePath = (handle: string) =>
-  '/profil/' + encodeURIComponent(handle.replace('@', ''))
+export const profilePath = (handle: string) => {
+  const username = handle.replace(/^@/, '')
+  return (
+    (username === 'me' ? '/profil/u/' : '/profil/') +
+    encodeURIComponent(username)
+  )
+}
 export function findPerson(handle: string) {
   return people.find(
     (user) =>

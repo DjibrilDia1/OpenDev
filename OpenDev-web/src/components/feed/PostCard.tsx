@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { usePeople } from '../../state/store'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { Post, PostMedia } from '../../types'
 import { Avatar } from '../common/Avatar'
@@ -12,16 +13,27 @@ import {
 } from '../common/Icons'
 import { Modal } from '../common/Modal'
 import { ActionDropdown } from '../common/ActionDropdown'
-import { people, profilePath } from '../../state/catalog'
-import { useCommunities, useDemo } from '../../state/store'
+import { PostActionIcon } from '../common/PostActionIcon'
+import { profilePath } from '../../state/catalog'
+import { isCommunityMember, useCommunities, useDemo } from '../../state/store'
+import './post-overview.css'
+import { PostResources } from './PostResources'
+import { ContributionBadge } from '../profile/ContributionBadge'
+import { api } from '../../lib/api'
+import type { ThanksTag } from '../../types/contribution'
 
 export function PostCard({
   post,
   expanded = false,
+  variant = 'default',
+  commentsReadOnly = false,
 }: {
   post: Post
   expanded?: boolean
+  variant?: 'default' | 'overview'
+  commentsReadOnly?: boolean
 }) {
+  const people = usePeople()
   const {
     state,
     update,
@@ -30,11 +42,16 @@ export function PostCard({
     toggleFollow,
     requireAuth,
     notify,
+    remote,
+    savingPostIds,
   } = useDemo()
   const communities = useCommunities()
   const [reportOpen, setReportOpen] = useState(false)
   const [reason, setReason] = useState('Spam ou publicité abusive')
   const [moderationOpen, setModerationOpen] = useState(false)
+  const [moderationError, setModerationError] = useState('')
+  const [moderating, setModerating] = useState(false)
+  const [removingComment, setRemovingComment] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.content)
   const [editError, setEditError] = useState('')
@@ -45,24 +62,182 @@ export function PostCard({
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [image, setImage] = useState<PostMedia | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [recognitionState, setRecognitionState] = useState<{
+    owner: string
+    postId: string
+    commentId: string
+  } | null>(null)
+  const recognizing =
+    state.signedIn &&
+    recognitionState?.owner === state.profile.id &&
+    recognitionState.postId === post.id
+      ? recognitionState.commentId
+      : null
+  const [recognitionError, setRecognitionError] = useState('')
+  const [solutionOverride, setSolutionOverride] = useState<{
+    postId: string
+    owner: string
+    baseId: string | null | undefined
+    commentId: string | null
+  } | null>(null)
+  const recognitionBusy = useRef(false)
+  const identityGeneration = useRef(0)
+  useEffect(() => {
+    identityGeneration.current += 1
+    recognitionBusy.current = false
+    return () => {
+      identityGeneration.current += 1
+    }
+  }, [state.profile.id, state.signedIn, post.id])
   const liked = state.signedIn && state.liked.includes(post.id)
   const saved = state.signedIn && state.saved.includes(post.id)
+  const saving = savingPostIds?.includes(post.id) ?? false
   const comments = state.comments[post.id] ?? []
-  const own = state.signedIn && state.posts.some((item) => item.id === post.id)
+  const loadComments = remote?.loadComments
+  useEffect(() => {
+    if (loadComments && commentsOpen)
+      void loadComments(post.id).catch((cause) =>
+        setCommentError(cause.message),
+      )
+  }, [loadComments, commentsOpen, post.id])
+  const own =
+    state.signedIn &&
+    (post.author.id
+      ? post.author.id === state.profile.id
+      : post.author.handle === state.profile.handle)
   const author = people.find((person) => person.handle === post.author.handle)
   const community = communities.find((item) => item.slug === post.communitySlug)
+  const canManageChannel =
+    state.signedIn &&
+    !!community &&
+    (community.ownerId === state.profile.id ||
+      community.myPermissions?.includes('edit_community') ||
+      community.myPermissions?.includes('moderate_posts'))
+  const canWriteChannel =
+    !remote ||
+    (!post.channelReadOnly && !post.channelArchivedAt) ||
+    canManageChannel
+  const channelRestriction = post.channelArchivedAt
+    ? 'Ce canal est archivé. Son historique reste consultable ; seuls les responsables peuvent modifier les publications existantes.'
+    : 'Ce canal est en lecture seule. Seuls les responsables autorisés peuvent publier et répondre.'
+  const canReplyChannel =
+    canWriteChannel && !post.channelArchivedAt && !commentsReadOnly
+  const recognitionMembership =
+    !post.communitySlug || (!!community && isCommunityMember(state, community))
+  const canRecognize = canReplyChannel && recognitionMembership
+  const replyRestriction = post.channelArchivedAt
+    ? 'Ce canal est archivé. L’historique reste consultable ; les nouvelles réponses sont fermées.'
+    : commentsReadOnly
+      ? 'Les nouvelles réponses sont fermées dans ce canal.'
+      : channelRestriction
   const canModerate =
     state.signedIn &&
     !!community &&
     (community.ownerId === state.profile.id ||
+      community.myPermissions?.includes('moderate_posts') ||
       community.staff?.some((member) => member.userId === state.profile.id))
   const canManageHelp =
     state.signedIn && post.author.handle === state.profile.handle
-  const help = state.helpRequests[post.id]
+  const help = remote
+    ? {
+        requested: post.category === 'Question · Entraide',
+        solutionId: post.solutionCommentId,
+      }
+    : state.helpRequests[post.id]
+  const currentSolutionOverride =
+    solutionOverride?.postId === post.id &&
+    solutionOverride.owner === state.profile.id &&
+    (post.solutionCommentId === solutionOverride.baseId ||
+      post.solutionCommentId === solutionOverride.commentId)
+      ? solutionOverride
+      : null
+  const solutionId = remote
+    ? currentSolutionOverride
+      ? currentSolutionOverride.commentId
+      : (comments.find((reply) => reply.isSolution)?.id ?? help?.solutionId)
+    : help?.solutionId
   const solution = help?.requested
-    ? comments.find((reply) => reply.id === help.solutionId)
+    ? comments.find((reply) => reply.id === solutionId)
     : undefined
+  async function recognize(commentId: string | null, tag?: ThanksTag | null) {
+    if (!remote || !requireAuth() || recognitionBusy.current) return
+    if (!canRecognize) {
+      setRecognitionError(
+        !recognitionMembership
+          ? 'Rejoins la communauté pour remercier une réponse ou retenir une solution.'
+          : replyRestriction,
+      )
+      return
+    }
+    const generation = identityGeneration.current
+    const userId = state.profile.id
+    recognitionBusy.current = true
+    setRecognitionState({
+      owner: userId,
+      postId: post.id,
+      commentId: commentId ?? 'solution',
+    })
+    setRecognitionError('')
+    let persisted = false
+    try {
+      if (tag !== undefined && commentId) {
+        await api(
+          `/posts/${post.id}/comments/${commentId}/thanks`,
+          tag === null ? 'DELETE' : 'PUT',
+          tag === null ? undefined : { tag },
+          userId,
+        )
+      } else {
+        const result = await api<{
+          post_id: string
+          accepted_comment_id: string | null
+        }>(
+          `/posts/${post.id}/solution`,
+          'PUT',
+          { comment_id: commentId },
+          userId,
+        )
+        if (generation === identityGeneration.current)
+          setSolutionOverride({
+            postId: post.id,
+            owner: userId,
+            baseId: post.solutionCommentId,
+            commentId: result.accepted_comment_id,
+          })
+      }
+      persisted = true
+      if (generation !== identityGeneration.current) return
+      await remote.refresh()
+      if (generation !== identityGeneration.current) return
+      await remote.loadComments(post.id)
+      if (generation !== identityGeneration.current) return
+      notify(
+        tag !== undefined
+          ? tag === null
+            ? 'Remerciement retiré.'
+            : 'Remerciement envoyé.'
+          : commentId
+            ? 'Solution retenue.'
+            : 'Question rouverte.',
+      )
+    } catch (cause) {
+      if (generation === identityGeneration.current)
+        setRecognitionError(
+          persisted
+            ? 'Modification enregistrée. Actualise la page pour retrouver les derniers scores.'
+            : cause instanceof Error
+              ? cause.message
+              : 'Impossible d’enregistrer cette action. Réessaie.',
+        )
+    } finally {
+      if (generation === identityGeneration.current) {
+        recognitionBusy.current = false
+        setRecognitionState(null)
+      }
+    }
+  }
   function changeHelp(requested: boolean, solutionId?: string) {
+    if (remote) return
     if (!canManageHelp) return
     if (solutionId && !comments.some((reply) => reply.id === solutionId)) return
     update((previous) => ({
@@ -89,9 +264,13 @@ export function PostCard({
       setShareOpen(true)
     }
   }
-  function addComment(event: FormEvent) {
+  async function addComment(event: FormEvent) {
     event.preventDefault()
     if (!requireAuth()) return
+    if (!canReplyChannel) {
+      setCommentError(replyRestriction)
+      return
+    }
     if (!comment.trim()) {
       setCommentError('Écris une réponse avant de l’envoyer.')
       return
@@ -102,13 +281,27 @@ export function PostCard({
       initials: state.profile.avatarInitials,
       text: comment.trim(),
     }
-    update((previous) => ({
-      ...previous,
-      comments: {
-        ...previous.comments,
-        [post.id]: [...(previous.comments[post.id] ?? []), reply],
-      },
-    }))
+    if (remote) {
+      try {
+        await remote.request('/posts/' + post.id + '/comments', 'POST', {
+          body: comment.trim(),
+        })
+        await remote.refresh()
+        await remote.loadComments(post.id)
+      } catch (cause) {
+        setCommentError(
+          cause instanceof Error ? cause.message : 'Réponse non envoyée.',
+        )
+        return
+      }
+    } else
+      update((previous) => ({
+        ...previous,
+        comments: {
+          ...previous.comments,
+          [post.id]: [...(previous.comments[post.id] ?? []), reply],
+        },
+      }))
     setComment('')
     setCommentError('')
     notify('Réponse ajoutée.')
@@ -159,7 +352,10 @@ export function PostCard({
       </div>
     )
   return (
-    <article className="post-card" id={post.id}>
+    <article
+      className={'post-card' + (variant === 'overview' ? ' post-overview' : '')}
+      id={post.id}
+    >
       {post.isPinned && (
         <p className="post-pinned">
           <PinIcon size={14} aria-hidden="true" /> Publication épinglée
@@ -180,6 +376,9 @@ export function PostCard({
             <Link to={profilePath(post.author.handle)} className="post-author">
               {post.author.name}
             </Link>
+            <ContributionBadge
+              score={author?.contributionScore ?? post.author.contributionScore}
+            />
             <Link className="post-time" to={'/publication/' + post.id}>
               {post.timeAgo}
             </Link>
@@ -192,37 +391,93 @@ export function PostCard({
                 <Link to={'/communaute/' + post.communitySlug}>
                   {post.communityName}
                 </Link>
+                {post.channelId && post.channelName && (
+                  <>
+                    <span aria-hidden="true"> / </span>
+                    <Link
+                      className="post-channel-context"
+                      to={
+                        '/communaute/' +
+                        post.communitySlug +
+                        '?canal=' +
+                        encodeURIComponent(post.channelId)
+                      }
+                    >
+                      #{post.channelName}
+                      {post.channelArchivedAt
+                        ? ' · Archivé'
+                        : post.channelReadOnly
+                          ? ' · Lecture seule'
+                          : ''}
+                    </Link>
+                  </>
+                )}
               </>
             )}
           </div>
         </div>
+        {variant === 'overview' && (
+          <span
+            className={
+              'overview-category' +
+              (post.category?.includes('Entraide')
+                ? ' overview-category-help'
+                : post.category?.includes('Projet')
+                  ? ' overview-category-project'
+                  : post.category?.includes('Ressource')
+                    ? ' overview-category-resource'
+                    : '')
+            }
+          >
+            {post.category ?? 'Discussion'}
+          </span>
+        )}
         <button
           className={'icon-button ' + (saved ? 'selected' : '')}
           aria-label={
             saved ? 'Retirer des enregistrements' : 'Enregistrer la publication'
           }
           aria-pressed={saved}
-          onClick={() => toggleSave(post.id)}
+          aria-busy={saving}
+          disabled={saving}
+          onClick={() => void toggleSave(post.id)}
         >
-          <BookmarkIcon size={19} className={saved ? 'fill-current' : ''} />
+          {saving ? (
+            <span
+              className="loading-spinner"
+              aria-hidden="true"
+              style={{ width: 18, height: 18, borderWidth: 2 }}
+            />
+          ) : (
+            <BookmarkIcon size={19} className={saved ? 'fill-current' : ''} />
+          )}
         </button>
         <ActionDropdown
           label={'Actions de la publication de ' + post.author.name}
         >
-          <button onClick={() => toggleSave(post.id)}>
-            <span aria-hidden="true">🔖 </span>
-            {saved ? 'Retirer des favoris' : 'Enregistrer la publication'}
+          <button
+            disabled={saving}
+            aria-busy={saving}
+            onClick={() => void toggleSave(post.id)}
+          >
+            <PostActionIcon name="bookmark" />
+            {saving
+              ? 'Enregistrement…'
+              : saved
+                ? 'Retirer des enregistrements'
+                : 'Enregistrer la publication'}
           </button>
           <button onClick={() => void share()}>
-            <span aria-hidden="true">🔗 </span>Copier le lien
+            <PostActionIcon name="link" />
+            Copier le lien
           </button>
-          {canManageHelp && (
+          {!remote && canManageHelp && (
             <button onClick={() => changeHelp(!help?.requested)}>
-              <span aria-hidden="true">🙋 </span>
+              <PostActionIcon name="help" />
               {help?.requested ? 'Retirer le tag d’aide' : 'Demander de l’aide'}
             </button>
           )}
-          {own && (
+          {own && canWriteChannel && (
             <button
               onClick={() => {
                 setEditText(post.content)
@@ -230,7 +485,8 @@ export function PostCard({
                 setEditing(true)
               }}
             >
-              <span aria-hidden="true">✏️ </span>Modifier la publication
+              <PostActionIcon name="edit" />
+              Modifier la publication
             </button>
           )}
           {own && (
@@ -238,14 +494,15 @@ export function PostCard({
               className="danger-action"
               onClick={() => setConfirmDelete(true)}
             >
-              <span aria-hidden="true">🗑️ </span>Supprimer la publication
+              <PostActionIcon name="trash" />
+              Supprimer la publication
             </button>
           )}
           {!canManageHelp && (
             <>
               {author && (
                 <button onClick={() => toggleFollow(author.id)}>
-                  <span aria-hidden="true">👤 </span>
+                  <PostActionIcon name="user" />
                   {state.signedIn && state.following.includes(author.id)
                     ? 'Ne plus suivre '
                     : 'Suivre '}
@@ -263,8 +520,8 @@ export function PostCard({
                     }))
                 }}
               >
-                <span aria-hidden="true">🙈 </span>Cette publication ne
-                m’intéresse pas
+                <PostActionIcon name="hide" />
+                Cette publication ne m’intéresse pas
               </button>
               <button
                 onClick={() => {
@@ -280,12 +537,18 @@ export function PostCard({
                     }))
                 }}
               >
-                <span aria-hidden="true">🔇 </span>Masquer les publications de
-                cet auteur
+                <PostActionIcon name="mute" />
+                Masquer les publications de cet auteur
               </button>
               <button
                 onClick={() => {
                   if (requireAuth()) {
+                    if (remote) {
+                      notify(
+                        'Le signalement sera disponible dans une prochaine étape.',
+                      )
+                      return
+                    }
                     setReason(
                       state.reports[post.id] ?? 'Spam ou publicité abusive',
                     )
@@ -293,7 +556,7 @@ export function PostCard({
                   }
                 }}
               >
-                <span aria-hidden="true">🚩 </span>
+                <PostActionIcon name="flag" />
                 {state.reports[post.id]
                   ? 'Modifier mon signalement'
                   : 'Signaler la publication'}
@@ -305,20 +568,20 @@ export function PostCard({
               className="danger-action"
               onClick={() => setModerationOpen(true)}
             >
-              <span aria-hidden="true">🛡️ </span>Modérer · Retirer de la
-              communauté
+              <PostActionIcon name="shield" />
+              Modérer · Retirer de la communauté
             </button>
           )}
         </ActionDropdown>
       </header>
-      {(help?.requested || canManageHelp) && (
+      {(help?.requested || (!remote && canManageHelp)) && (
         <div className="post-help-toolbar">
           {help?.requested && (
-            <span className={'help-status ' + (solution ? 'resolved' : '')}>
-              {solution ? '✓ Résolu' : 'Besoin d’aide'}
+            <span className={'help-status ' + (solutionId ? 'resolved' : '')}>
+              {solutionId ? '✓ Résolu' : 'Besoin d’aide'}
             </span>
           )}
-          {canManageHelp && (
+          {!remote && canManageHelp && (
             <button
               className="text-button small"
               aria-pressed={help?.requested ?? false}
@@ -329,15 +592,21 @@ export function PostCard({
                 : '+ Demander de l’aide'}
             </button>
           )}
-          {canManageHelp && solution && (
+          {canManageHelp && solutionId && (!remote || canRecognize) && (
             <button
               className="text-button small"
-              onClick={() => changeHelp(true)}
+              disabled={recognizing !== null}
+              onClick={() => (remote ? void recognize(null) : changeHelp(true))}
             >
               Rouvrir la demande
             </button>
           )}
         </div>
+      )}
+      {recognitionError && (
+        <p className="field-error" role="alert">
+          {recognitionError}
+        </p>
       )}
       {solution && (
         <div className="accepted-summary">
@@ -351,9 +620,11 @@ export function PostCard({
           </button>
         </div>
       )}
-      {post.category && post.category !== 'Discussion' && (
-        <span className="post-category">{post.category}</span>
-      )}
+      {variant !== 'overview' &&
+        post.category &&
+        post.category !== 'Discussion' && (
+          <span className="post-category">{post.category}</span>
+        )}
       {post.title && (
         <h2 className="post-title">
           <Link to={'/publication/' + post.id}>{post.title}</Link>
@@ -390,6 +661,7 @@ export function PostCard({
           </pre>
         </div>
       )}
+      {!!post.resources?.length && <PostResources resources={post.resources} />}
       {post.attachment && (
         <button className="attachment" onClick={() => setAttachmentOpen(true)}>
           <FilePdfIcon size={25} aria-hidden="true" />
@@ -400,7 +672,7 @@ export function PostCard({
           <span>Consulter</span>
         </button>
       )}
-      {post.tags.length > 0 && (
+      {variant !== 'overview' && post.tags.length > 0 && (
         <div className="post-tags">
           {post.tags.map((tag) => (
             <Link key={tag} to={'/recherche?q=' + encodeURIComponent(tag)}>
@@ -420,18 +692,19 @@ export function PostCard({
           onClick={() => toggleLike(post.id)}
         >
           <HeartIcon size={19} className={liked ? 'fill-current' : ''} />
-          <span>{post.likesCount + Number(liked)}</span>
+          <span>{post.likesCount + (remote ? 0 : Number(liked))}</span>
         </button>
         <button
-          aria-label={`${comments.length} réponses à la publication`}
+          aria-label={`${remote ? post.repliesCount : comments.length} réponses à la publication`}
           aria-expanded={commentsOpen}
           onClick={() => setCommentsOpen(!commentsOpen)}
         >
           <MessageCircleIcon size={19} />
           <span>
-            {comments.length}{' '}
+            {remote ? post.repliesCount : comments.length}{' '}
             <span className="action-label">
-              réponse{comments.length > 1 ? 's' : ''}
+              réponse
+              {(remote ? post.repliesCount : comments.length) > 1 ? 's' : ''}
             </span>
           </span>
         </button>
@@ -450,6 +723,15 @@ export function PostCard({
             Supprimer
           </button>
         )}
+        {variant === 'overview' && post.tags.length > 0 && (
+          <div className="overview-tags">
+            {post.tags.map((tag) => (
+              <Link key={tag} to={'/recherche?q=' + encodeURIComponent(tag)}>
+                {tag}
+              </Link>
+            ))}
+          </div>
+        )}
       </footer>
       {commentsOpen && (
         <section className="comments" aria-label="Réponses">
@@ -461,21 +743,117 @@ export function PostCard({
           {comments.map((reply) => (
             <div
               className={
-                'comment ' +
-                (solution?.id === reply.id ? 'accepted-comment' : '')
+                'comment ' + (solutionId === reply.id ? 'accepted-comment' : '')
               }
               key={reply.id}
             >
               <Avatar initials={reply.initials} size="sm" />
               <div>
-                <strong>{reply.author}</strong>
+                <div className="comment-author-line">
+                  <strong>{reply.author}</strong>
+                  <ContributionBadge
+                    score={
+                      people.find((person) => person.id === reply.authorId)
+                        ?.contributionScore ?? reply.contributionScore
+                    }
+                  />
+                </div>
                 <p>{reply.text}</p>
-                {solution?.id === reply.id && (
+                {remote && help?.requested && (
+                  <div className="comment-contribution-actions">
+                    {reply.thanksCount !== undefined &&
+                      reply.thanksCount > 0 && (
+                        <span className="small muted">
+                          {reply.thanksCount} remerciement
+                          {reply.thanksCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    {canRecognize &&
+                      reply.authorId &&
+                      reply.authorId !== state.profile.id && (
+                        <details className="comment-thanks">
+                          <summary>
+                            {reply.myThanksTag === 'thanks'
+                              ? 'Merci envoyé'
+                              : reply.myThanksTag === 'helpful'
+                                ? 'Utile'
+                                : reply.myThanksTag === 'clear'
+                                  ? 'Très clair'
+                                  : 'Remercier'}
+                          </summary>
+                          <div
+                            className="comment-thanks-options"
+                            role="group"
+                            aria-label={'Remercier ' + reply.author}
+                          >
+                            {(
+                              [
+                                ['thanks', 'Merci'],
+                                ['helpful', 'Utile'],
+                                ['clear', 'Très clair'],
+                              ] as const
+                            ).map(([tag, label]) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                aria-pressed={reply.myThanksTag === tag}
+                                disabled={recognizing !== null}
+                                onClick={() =>
+                                  void recognize(
+                                    reply.id,
+                                    reply.myThanksTag === tag ? null : tag,
+                                  )
+                                }
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    {canRecognize &&
+                      canManageHelp &&
+                      reply.authorId &&
+                      reply.authorId !== state.profile.id && (
+                        <button
+                          type="button"
+                          className="text-button small"
+                          disabled={recognizing !== null}
+                          aria-pressed={solutionId === reply.id}
+                          onClick={() =>
+                            void recognize(
+                              solutionId === reply.id ? null : reply.id,
+                            )
+                          }
+                        >
+                          {recognizing === reply.id
+                            ? 'Enregistrement…'
+                            : solutionId === reply.id
+                              ? 'Retirer la solution'
+                              : 'Retenir comme solution'}
+                        </button>
+                      )}
+                  </div>
+                )}
+                {remote &&
+                  state.signedIn &&
+                  (canModerate || reply.authorId === state.profile.id) && (
+                    <button
+                      className="text-button small"
+                      onClick={() => {
+                        setModerationError('')
+                        setRemovingComment(reply.id)
+                      }}
+                    >
+                      Supprimer la réponse
+                    </button>
+                  )}
+                {solutionId === reply.id && (
                   <span className="help-status resolved">
                     ✓ Solution retenue par l’auteur
                   </span>
                 )}
-                {canManageHelp && help?.requested && (
+                {!remote && canManageHelp && help?.requested && (
                   <button
                     className="text-button small"
                     aria-pressed={solution?.id === reply.id}
@@ -494,22 +872,52 @@ export function PostCard({
               </div>
             </div>
           ))}
-          <form onSubmit={addComment}>
-            <label className="sr-only" htmlFor={'comment-' + post.id}>
-              Ta réponse
-            </label>
-            <input
-              id={'comment-' + post.id}
-              name="comment"
-              value={comment}
-              maxLength={1000}
-              onChange={(event) => setComment(event.target.value)}
-              placeholder="Apporte ta pierre à la discussion…"
-            />
-            <button className="button compact" type="submit">
-              Répondre
-            </button>
-          </form>
+          {remote &&
+            help?.requested &&
+            !recognitionMembership &&
+            canReplyChannel && (
+              <p className="post-channel-notice">
+                {state.signedIn ? (
+                  <>
+                    Rejoins la communauté pour remercier une réponse ou retenir
+                    une solution.{' '}
+                    <Link to={'/communaute/' + post.communitySlug}>
+                      Voir la communauté
+                    </Link>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-button small"
+                    onClick={requireAuth}
+                  >
+                    Connecte-toi pour remercier une réponse.
+                  </button>
+                )}
+              </p>
+            )}
+          {canReplyChannel ? (
+            <form onSubmit={addComment}>
+              <label className="sr-only" htmlFor={'comment-' + post.id}>
+                Ta réponse
+              </label>
+              <input
+                id={'comment-' + post.id}
+                name="comment"
+                value={comment}
+                maxLength={1000}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="Apporte ta pierre à la discussion…"
+              />
+              <button className="button compact" type="submit">
+                Répondre
+              </button>
+            </form>
+          ) : (
+            <p className="post-channel-notice" role="status">
+              {replyRestriction}
+            </p>
+          )}
           {commentError && (
             <p className="field-error" role="alert">
               {commentError}
@@ -523,35 +931,63 @@ export function PostCard({
           onClose={() => setEditing(false)}
         >
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
               if (!own) return
+              if (!canWriteChannel) {
+                setEditError(channelRestriction)
+                return
+              }
               if (
                 !editText.trim() &&
                 !post.media?.length &&
+                !post.resources?.length &&
                 !post.codeSnippet
               ) {
                 setEditError('Ajoute du texte avant d’enregistrer.')
                 return
               }
-              update((previous) => ({
-                ...previous,
-                posts: previous.posts.map((item) =>
-                  item.id === post.id
-                    ? {
-                        ...item,
-                        content: editText.trim(),
-                        tags: [
-                          ...new Set(
-                            editText
-                              .match(/#[\p{L}\p{N}_-]+/gu)
-                              ?.map((tag) => tag.slice(1)) ?? [],
-                          ),
-                        ],
-                      }
-                    : item,
-                ),
-              }))
+              if (remote) {
+                try {
+                  const firstResource = post.resources?.[0]
+                  const resourceCaption =
+                    firstResource?.kind === 'link'
+                      ? firstResource.title
+                      : firstResource?.name
+                  await remote.request('/posts/' + post.id, 'PATCH', {
+                    body:
+                      editText.trim() ||
+                      resourceCaption ||
+                      'Extrait de code partagé',
+                  })
+                  await remote.refresh()
+                } catch (cause) {
+                  setEditError(
+                    cause instanceof Error
+                      ? cause.message
+                      : 'Modification impossible.',
+                  )
+                  return
+                }
+              } else
+                update((previous) => ({
+                  ...previous,
+                  posts: previous.posts.map((item) =>
+                    item.id === post.id
+                      ? {
+                          ...item,
+                          content: editText.trim(),
+                          tags: [
+                            ...new Set(
+                              editText
+                                .match(/#[\p{L}\p{N}_-]+/gu)
+                                ?.map((tag) => tag.slice(1)) ?? [],
+                            ),
+                          ],
+                        }
+                      : item,
+                  ),
+                }))
               setEditing(false)
               notify('Publication mise à jour.')
             }}
@@ -622,13 +1058,39 @@ export function PostCard({
           onClose={() => setModerationOpen(false)}
         >
           <p>
-            Elle sera masquée de la communauté dans cette démonstration.
-            L’équipe pourra la rétablir.
+            {remote
+              ? 'La publication et ses réponses seront supprimées de la communauté. Cette action est définitive.'
+              : 'Elle sera masquée de la communauté dans cette démonstration. L’équipe pourra la rétablir.'}
           </p>
+          {moderationError && (
+            <p className="field-error mt-3" role="alert">
+              {moderationError}
+            </p>
+          )}
           <button
             className="button mt-4"
-            onClick={() => {
+            disabled={moderating}
+            onClick={async () => {
               if (!canModerate) return
+              if (remote) {
+                setModerating(true)
+                setModerationError('')
+                try {
+                  await remote.request('/posts/' + post.id, 'DELETE')
+                  await remote.refresh()
+                  setModerationOpen(false)
+                  notify('Publication supprimée de la communauté.')
+                } catch (cause) {
+                  setModerationError(
+                    cause instanceof Error
+                      ? cause.message
+                      : 'Suppression impossible.',
+                  )
+                } finally {
+                  setModerating(false)
+                }
+                return
+              }
               update((previous) => ({
                 ...previous,
                 moderatedPosts: [
@@ -639,8 +1101,67 @@ export function PostCard({
               notify('Publication retirée dans la démo.')
             }}
           >
-            Confirmer le retrait
+            {moderating ? 'Suppression…' : 'Confirmer le retrait'}
           </button>
+        </Modal>
+      )}
+      {removingComment && remote && (
+        <Modal
+          title="Supprimer cette réponse ?"
+          onClose={() => {
+            if (!moderating) setRemovingComment(null)
+          }}
+        >
+          <p>La réponse sera supprimée définitivement.</p>
+          {moderationError && (
+            <p className="field-error mt-3" role="alert">
+              {moderationError}
+            </p>
+          )}
+          <div className="modal-footer">
+            <button
+              className="button secondary"
+              disabled={moderating}
+              onClick={() => setRemovingComment(null)}
+            >
+              Annuler
+            </button>
+            <button
+              className="button"
+              disabled={moderating}
+              onClick={async () => {
+                setModerating(true)
+                setModerationError('')
+                try {
+                  await remote.request(
+                    `/posts/${post.id}/comments/${removingComment}`,
+                    'DELETE',
+                  )
+                  if (solutionId === removingComment)
+                    setSolutionOverride({
+                      postId: post.id,
+                      owner: state.profile.id,
+                      baseId: post.solutionCommentId,
+                      commentId: null,
+                    })
+                  await remote.refresh()
+                  await remote.loadComments(post.id)
+                  setRemovingComment(null)
+                  notify('Réponse supprimée.')
+                } catch (cause) {
+                  setModerationError(
+                    cause instanceof Error
+                      ? cause.message
+                      : 'Suppression impossible.',
+                  )
+                } finally {
+                  setModerating(false)
+                }
+              }}
+            >
+              {moderating ? 'Suppression…' : 'Supprimer'}
+            </button>
+          </div>
         </Modal>
       )}
       {shareOpen && (
@@ -691,7 +1212,7 @@ export function PostCard({
           title="Supprimer cette publication ?"
           onClose={() => setConfirmDelete(false)}
         >
-          <p>La publication et ses réponses locales seront supprimées.</p>
+          <p>La publication et ses réponses seront supprimées.</p>
           <div className="modal-footer">
             <button
               className="button secondary"
@@ -701,7 +1222,22 @@ export function PostCard({
             </button>
             <button
               className="button"
-              onClick={() => {
+              onClick={async () => {
+                if (remote) {
+                  try {
+                    await remote.request('/posts/' + post.id, 'DELETE')
+                    await remote.refresh()
+                    setConfirmDelete(false)
+                    notify('Publication supprimée.')
+                  } catch (cause) {
+                    notify(
+                      cause instanceof Error
+                        ? cause.message
+                        : 'Suppression impossible.',
+                    )
+                  }
+                  return
+                }
                 update((previous) => {
                   const comments = { ...previous.comments }
                   const helpRequests = { ...previous.helpRequests }

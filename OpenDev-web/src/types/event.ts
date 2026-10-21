@@ -1,4 +1,13 @@
 export interface CommunityEvent {
+  startsAt?: string
+  endsAt?: string | null
+  description?: string
+  format?: 'online' | 'in_person'
+  registrationUrl?: string
+  communityId?: string
+  capacity?: number | null
+  attendeeCount?: number
+  availableSeats?: number | null
   communitySlug?: string
   organizerId?: string
   date: string

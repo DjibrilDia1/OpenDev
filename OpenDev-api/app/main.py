@@ -6,13 +6,25 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import communities, discovery, events, health, me, posts, projects
+from app.api.routes import (
+    communications,
+    communities,
+    contributions,
+    discovery,
+    events,
+    health,
+    me,
+    posts,
+    projects,
+    saved_posts,
+)
 from app.core.config import get_settings
 from app.repositories.supabase_rest import SupabaseRestError
 
 settings = get_settings()
 
 
+# pyrefly: ignore [deprecated]
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as http_client:
@@ -42,7 +54,14 @@ app.add_middleware(
 async def handle_supabase_error(_: Request, exc: SupabaseRestError) -> JSONResponse:
     if exc.status_code in (400, 401, 403, 404, 409, 422):
         code = exc.status_code
-        detail = exc.detail
+        detail = {
+            400: "Invalid request",
+            401: "Session expired",
+            403: "Permission denied",
+            404: "Resource not found",
+            409: "This value is already in use",
+            422: "Please check the supplied fields",
+        }[code]
     else:
         code = 502
         detail = "Supabase Data API request failed"
@@ -54,8 +73,11 @@ for router in (
     me.router,
     discovery.router,
     communities.router,
+    communications.router,
+    contributions.router,
     posts.router,
     projects.router,
     events.router,
+    saved_posts.router,
 ):
     app.include_router(router, prefix=settings.api_v1_prefix)

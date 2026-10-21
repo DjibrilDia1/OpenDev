@@ -2,14 +2,34 @@ project_id = "opendev"
 
 [api]
 enabled = true
-port = 54321
+port = 55321
 schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-port = 54322
+port = 55322
+shadow_port = 55320
 major_version = 17
 
 [db.seed]
 enabled = false
+
+[studio]
+port = 55323
+
+[inbucket]
+port = 55324
+smtp_port = 55325
+pop3_port = 55326
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5174"
+additional_redirect_urls = ["http://127.0.0.1:5174/**", "http://127.0.0.1:5175/**"]
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true

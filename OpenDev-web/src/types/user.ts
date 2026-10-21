@@ -1,4 +1,25 @@
+export interface SignupProfile {
+  account_type?: 'individual' | 'company'
+  company_name?: string | null
+  first_name?: string
+  last_name?: string
+  username?: string
+  full_name: string
+  headline: string
+  bio: string
+  location: string
+}
+
 export interface User {
+  contributionScore?: number
+  accountType?: 'individual' | 'company'
+  companyName?: string
+  firstName?: string
+  lastName?: string
+  company?: string
+  school?: string
+  experienceLevel?: string
+  coverUrl?: string
   id: string
   name: string
   handle: string

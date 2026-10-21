@@ -1,9 +1,19 @@
+import { OpenDevLogo } from '../common/OpenDevLogo'
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { NavIcon, type NavIconName } from '../common/NavIcon'
 import { SearchIcon } from '../common/Icons'
 import { useDemo } from '../../state/store'
 import { Avatar } from '../common/Avatar'
+import './navigation-counts.css'
+
+function UnreadCount({ count, label }: { count: number; label: string }) {
+  return count > 0 ? (
+    <span className="navigation-unread" aria-label={`${count} ${label}`}>
+      {count > 99 ? '99+' : count}
+    </span>
+  ) : null
+}
 
 export function MainNavigation({
   mobile = false,
@@ -12,7 +22,7 @@ export function MainNavigation({
   mobile?: boolean
   onOpenMenu?: () => void
 }) {
-  const { state } = useDemo()
+  const { state, remote, communicationCounts } = useDemo()
   const items: { to: string; label: string; icon: NavIconName }[] = [
     { to: '/', label: 'Accueil', icon: 'home' },
     { to: '/decouvrir', label: 'Découvrir', icon: 'communities' },
@@ -51,9 +61,21 @@ export function MainNavigation({
           >
             <NavIcon name={icon} />
             <span>{label}</span>
-            {icon === 'notifications' && !state.readNotifications && (
-              <span className="notification-dot" />
+            {remote && icon === 'messages' && (
+              <UnreadCount
+                count={communicationCounts?.messages_unread ?? 0}
+                label="messages non lus"
+              />
             )}
+            {remote && icon === 'notifications' && (
+              <UnreadCount
+                count={communicationCounts?.notifications_unread ?? 0}
+                label="notifications non lues"
+              />
+            )}
+            {!remote &&
+              icon === 'notifications' &&
+              !state.readNotifications && <span className="notification-dot" />}
           </NavLink>
         ))}
       {mobile && (
@@ -84,11 +106,11 @@ export function TopNav({
 }: {
   onToggleMobileMenu: () => void
 }) {
-  const { state, openAuth, requireAuth } = useDemo()
+  const { state, openAuth, requireAuth, communicationCounts } = useDemo()
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
   return (
-    <header className="top-nav">
+    <header className={'top-nav' + (state.signedIn ? '' : ' guest-navigation')}>
       <div className="top-nav-inner">
         <button
           className="icon-button menu-toggle"
@@ -102,22 +124,7 @@ export function TopNav({
           />
         </button>
         <Link to="/" className="brand" aria-label="OpenDev, accueil">
-          <svg
-            className="brand-symbol"
-            width="30"
-            height="30"
-            viewBox="0 0 64 64"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="7"
-            strokeLinecap="round"
-          >
-            <path d="M33 15c-9-9-24-2-24 10v14c0 13 15 20 24 10" />
-            <path d="M31 15c9-9 24-2 24 10v14c0 13-15 20-24 10" />
-            <path d="M24 32h16" />
-          </svg>
-          OpenDev
+          <OpenDevLogo />
         </Link>
         <form
           className="global-search"
@@ -125,6 +132,12 @@ export function TopNav({
           onSubmit={(event) => {
             event.preventDefault()
             navigate('/recherche?q=' + encodeURIComponent(query.trim()))
+            const focused = document.activeElement
+            if (
+              focused instanceof HTMLElement &&
+              event.currentTarget.contains(focused)
+            )
+              focused.blur()
           }}
         >
           <SearchIcon aria-hidden="true" size={18} />
@@ -201,13 +214,19 @@ export function TopNav({
               <path d="M13 4H4v16h16v-9M15 3l6 6M10 14l-1 1 1-5L19 1l4 4-9 9Z" />
             </svg>
           </button>
-          <Link
-            className="icon-button mobile-messages"
-            to="/messages"
-            aria-label="Messages"
-          >
-            <NavIcon name="messages" />
-          </Link>
+          {state.signedIn && (
+            <Link
+              className="icon-button mobile-messages"
+              to="/messages"
+              aria-label="Messages"
+            >
+              <NavIcon name="messages" />
+              <UnreadCount
+                count={communicationCounts?.messages_unread ?? 0}
+                label="messages non lus"
+              />
+            </Link>
+          )}
           {!state.signedIn && (
             <button className="button compact" onClick={openAuth}>
               Se connecter

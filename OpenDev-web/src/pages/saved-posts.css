@@ -1,0 +1,20 @@
+.saved-posts {
+  max-width: 800px;
+  margin: 0 auto;
+}
+.saved-posts-loading {
+  display: flex;
+  min-height: 240px;
+  align-items: center;
+  justify-content: center;
+}
+.saved-posts-error {
+  margin-bottom: 20px;
+}
+.saved-posts-error .button {
+  margin-top: 12px;
+}
+.saved-posts-more {
+  display: block;
+  margin: 24px auto;
+}

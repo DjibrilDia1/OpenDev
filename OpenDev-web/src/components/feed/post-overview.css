@@ -1,0 +1,120 @@
+.post-overview {
+  padding: 20px;
+}
+.post-overview .post-header {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.post-overview .post-header > .grow {
+  min-width: 0;
+}
+.post-overview .post-author {
+  font-size: 14px;
+  font-weight: 650;
+}
+.post-overview .post-author-line {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.post-overview .post-context {
+  font-size: 12px;
+}
+.post-channel-context {
+  overflow-wrap: anywhere;
+}
+.post-channel-notice {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--neutral-soft, #f3f4f6);
+  font-size: 13px;
+}
+.overview-category {
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: #f2eef7;
+  color: #62517d;
+  font-size: 11px;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+.overview-category-help {
+  background: #fbf3e4;
+  color: #805d24;
+}
+.overview-category-project {
+  background: #edf5ef;
+  color: #35624f;
+}
+.overview-category-resource {
+  background: #edf3fa;
+  color: #405f85;
+}
+[data-theme='dark'] .overview-category {
+  background: #322d3c;
+  color: #cebfdf;
+}
+[data-theme='dark'] .overview-category-help {
+  background: #3b3224;
+  color: #e4cca0;
+}
+[data-theme='dark'] .overview-category-project {
+  background: #24372e;
+  color: #b3d6be;
+}
+[data-theme='dark'] .overview-category-resource {
+  background: #273444;
+  color: #b8cde7;
+}
+.post-overview .post-title {
+  font-size: 17px;
+  line-height: 1.45;
+  margin-bottom: 6px;
+  font-weight: 650;
+}
+.post-overview .post-content {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.post-overview .post-actions {
+  border-top: 0;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+}
+.overview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+.overview-tags a {
+  color: var(--neutral-ink, #34343b);
+  background: var(--neutral-soft, #f3f4f6);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+@media (max-width: 600px) {
+  .post-overview {
+    padding: 16px;
+  }
+  .post-overview .post-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .post-overview .post-header > .grow {
+    flex-basis: calc(100% - 64px);
+  }
+  .overview-category {
+    margin-left: 48px;
+    margin-right: auto;
+  }
+  .overview-tags {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
+import { LiveEventsPage } from './LiveEventsPage'
 import {
   toggleItem,
   useDemo,
@@ -11,6 +12,10 @@ import {
 const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 export function EventsPage() {
+  const { remote } = useDemo()
+  return remote ? <LiveEventsPage /> : <DemoEventsPage />
+}
+function DemoEventsPage() {
   const [params] = useSearchParams()
   const community = useCommunities().find(
     (item) => item.slug === params.get('communaute'),
@@ -21,7 +26,7 @@ export function EventsPage() {
       event.communitySlug === community.slug ||
       (!event.communitySlug && event.community === community.name),
   )
-  const { state, update, requireAuth, notify } = useDemo()
+  const { state, update, requireAuth, notify, remote } = useDemo()
   const today = new Date()
   const [month, setMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
@@ -159,7 +164,9 @@ export function EventsPage() {
             )}
           </div>
           <p className="small muted mb-4">
-            Événements de démonstration · inscriptions locales
+            {remote
+              ? 'Événements de la communauté'
+              : 'Événements de démonstration · inscriptions locales'}
           </p>
           <div className="events-list">
             {events.map((event) => {
@@ -188,6 +195,12 @@ export function EventsPage() {
                       aria-pressed={registered}
                       onClick={() => {
                         if (!requireAuth()) return
+                        if (remote) {
+                          void remote
+                            .rsvp(event.id, registered)
+                            .catch((cause) => notify(cause.message))
+                          return
+                        }
                         update((previous) => ({
                           ...previous,
                           eventIds: toggleItem(previous.eventIds, event.id),

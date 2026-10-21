@@ -1,3 +1,4 @@
+import { usePeople } from '../state/store'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { EmptyState } from '../components/common/EmptyState'
@@ -5,9 +6,60 @@ import { PostCard } from '../components/feed/PostCard'
 import { CommunityCard } from '../components/community/CommunityCard'
 import { PersonRow } from '../components/profile/PersonRow'
 import { useCommunities, useDemo } from '../state/store'
-import { people, matches } from '../state/catalog'
+import { matches } from '../state/catalog'
+import { liveMode } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { toPost, type PostRow } from '../lib/adapters'
+import type { Post } from '../types'
+
+function LivePost({ id }: { id: string }) {
+  const { remote, allPosts } = useDemo()
+  const request = remote!.request
+  const [post, setPost] = useState<Post | null>(null)
+  const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    let active = true
+    void request<PostRow>('/posts/' + encodeURIComponent(id))
+      .then((row) => {
+        if (active) {
+          setPost(toPost(row))
+          setError('')
+        }
+      })
+      .catch((cause) => {
+        if (active)
+          setError(
+            cause instanceof Error ? cause.message : 'Chargement impossible.',
+          )
+      })
+    return () => {
+      active = false
+    }
+  }, [id, request, retry, allPosts])
+  if (post) return <PostCard post={post} expanded />
+  if (error)
+    return (
+      <div className="surface" role="alert">
+        <p>{error}</p>
+        <button
+          className="button secondary mt-4"
+          onClick={() => setRetry(retry + 1)}
+        >
+          Réessayer
+        </button>
+      </div>
+    )
+  return (
+    <div className="centered" role="status">
+      <span className="loading-spinner" aria-hidden="true" />
+      <span className="sr-only">Chargement de la publication…</span>
+    </div>
+  )
+}
 
 export function SearchPage() {
+  const people = usePeople()
   const communityCatalog = useCommunities()
   const [params, setParams] = useSearchParams()
   const { allPosts } = useDemo()
@@ -163,7 +215,7 @@ export function SavedPage() {
 }
 export function PostPage() {
   const { id } = useParams()
-  const { allPosts } = useDemo()
+  const { allPosts, remote, state } = useDemo()
   const post = allPosts.find((item) => item.id === id)
   return (
     <AppLayout>
@@ -172,10 +224,12 @@ export function PostPage() {
       </Link>
       {post ? (
         <PostCard post={post} expanded />
+      ) : remote && id ? (
+        <LivePost key={id + state.profile.id} id={id} />
       ) : (
         <EmptyState
           title="Publication introuvable"
-          description="Elle a peut-être été supprimée, ou créée dans un autre navigateur de démonstration."
+          description="Elle a peut-être été supprimée ou son accès est limité."
           to="/"
           label="Retour au fil"
         />
@@ -312,7 +366,39 @@ const information: Record<
 }
 export function InfoPage() {
   const { page = 'a-propos' } = useParams()
-  const content = information[page] ?? information['a-propos']
+  const liveInformation: typeof information = {
+    'a-propos': {
+      title: 'Pour les développeurs, par les développeurs.',
+      sections: [
+        information['a-propos'].sections[0],
+        [
+          'Une communauté qui se construit',
+          'Retrouve des développeurs, échange dans les communautés et partage tes projets sur OpenDev.',
+        ],
+      ],
+    },
+    confidentialite: {
+      title: 'Tes données sur OpenDev.',
+      sections: [
+        [
+          'Ton profil public',
+          'Ton nom, ton nom d’utilisateur et les informations que tu publies sur ton profil sont visibles sur la plateforme. Ton adresse e-mail et tes préférences de personnalisation ne figurent pas dans l’annuaire public.',
+        ],
+        [
+          'Tes échanges privés',
+          'Les conversations et leurs messages sont enregistrés sur les serveurs de la plateforme. L’accès depuis l’application est réservé aux deux participants. Les notifications sont personnelles. Les échanges ne sont pas chiffrés de bout en bout.',
+        ],
+        [
+          'Ta connexion',
+          'Supabase gère ton compte et ta session, avec les fournisseurs de connexion activés. La déconnexion ferme ta session ; elle ne supprime pas ton compte ni les contenus enregistrés.',
+        ],
+      ],
+    },
+  }
+  const content =
+    (liveMode ? liveInformation[page] : undefined) ??
+    information[page] ??
+    (liveMode ? liveInformation['a-propos'] : information['a-propos'])
   return (
     <AppLayout sidebarVariant="none">
       <div className="information-page">

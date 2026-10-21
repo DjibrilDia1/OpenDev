@@ -1,12 +1,14 @@
+import { usePeople } from '../../state/store'
 import { Link } from 'react-router-dom'
 import { Avatar } from '../common/Avatar'
 import { FollowButton } from '../common/FollowButton'
-import { people, profilePath } from '../../state/catalog'
+import { profilePath } from '../../state/catalog'
 import { useDemo, toggleItem, useCommunityEvents } from '../../state/store'
 
 export function RightSidebar() {
+  const people = usePeople()
   const upcomingEvents = useCommunityEvents()
-  const { state, update, requireAuth, notify, allPosts } = useDemo()
+  const { state, update, requireAuth, notify, allPosts, remote } = useDemo()
   const contributionCount = allPosts.filter(
     (post) => post.author.handle === state.profile.handle,
   ).length
@@ -74,25 +76,27 @@ export function RightSidebar() {
             ))}
         </div>
       </section>
-      <section className="sidebar-topics">
-        <h2>Dans les conversations</h2>
-        {[
-          { tag: 'React', label: 'Composants & bonnes pratiques' },
-          { tag: 'TypeScript', label: 'Des types qui font la différence' },
-          { tag: 'open-source', label: 'Construire ensemble' },
-        ].map((topic) => (
-          <Link
-            to={'/recherche?q=' + encodeURIComponent(topic.tag)}
-            className="topic-row"
-            key={topic.tag}
-          >
-            <span>
-              <strong>#{topic.tag}</strong>
-              <small>{topic.label}</small>
-            </span>
-          </Link>
-        ))}
-      </section>
+      {!remote && (
+        <section className="sidebar-topics">
+          <h2>Dans les conversations</h2>
+          {[
+            { tag: 'React', label: 'Composants & bonnes pratiques' },
+            { tag: 'TypeScript', label: 'Des types qui font la différence' },
+            { tag: 'open-source', label: 'Construire ensemble' },
+          ].map((topic) => (
+            <Link
+              to={'/recherche?q=' + encodeURIComponent(topic.tag)}
+              className="topic-row"
+              key={topic.tag}
+            >
+              <span>
+                <strong>#{topic.tag}</strong>
+                <small>{topic.label}</small>
+              </span>
+            </Link>
+          ))}
+        </section>
+      )}
       <section>
         <div className="section-heading">
           <h2>On se retrouve ?</h2>
@@ -114,6 +118,12 @@ export function RightSidebar() {
                 aria-pressed={state.eventIds.includes(event.id)}
                 onClick={() => {
                   if (!requireAuth()) return
+                  if (remote) {
+                    void remote
+                      .rsvp(event.id, state.eventIds.includes(event.id))
+                      .catch((cause) => notify(cause.message))
+                    return
+                  }
                   update((previous) => ({
                     ...previous,
                     eventIds: toggleItem(previous.eventIds, event.id),
@@ -138,7 +148,7 @@ export function RightSidebar() {
         <Link to="/regles">Règles</Link>
         <Link to="/confidentialite">Confidentialité</Link>
         <p>Fait pour celles et ceux qui construisent.</p>
-        <p>© OpenDev 2026 · Démonstration</p>
+        <p>© OpenDev 2026{!remote && ' · Démonstration'}</p>
       </div>
     </aside>
   )

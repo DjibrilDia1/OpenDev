@@ -11,8 +11,25 @@ export type CommunityCategory =
   | 'Sécurité'
 
 export type CommunityRole = 'Membre' | 'Modérateur'
+export type CommunityPermission =
+  | 'edit_community'
+  | 'manage_members'
+  | 'moderate_posts'
+  | 'manage_events'
+export interface CommunityResource {
+  title: string
+  description: string
+  url: string
+}
 
 export interface Community {
+  rules?: string
+  resources?: CommunityResource[]
+  myPermissions?: string[]
+  myRole?: string
+  memberCountValue?: number
+  postCount?: number
+  promotionActive?: boolean
   visibility?: 'public' | 'private'
   coverUrl?: string
   memberIds?: string[]

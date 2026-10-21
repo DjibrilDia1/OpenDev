@@ -1,0 +1,119 @@
+.post-resources {
+  margin-block: 18px;
+  color: var(--ink);
+}
+
+.post-resource-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.post-resource-gallery-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.post-resource-image {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--neutral-soft);
+  min-width: 0;
+}
+
+.post-resource-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  max-height: 420px;
+  object-fit: cover;
+}
+
+.post-resource-gallery-single img {
+  object-fit: contain;
+}
+
+.post-resource-image-unavailable {
+  display: block;
+  padding: 30px 16px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.post-resource-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.post-resource-link,
+.post-resource-document {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--neutral-soft);
+}
+
+.post-resource-link:hover {
+  background: var(--neutral-medium);
+}
+
+.post-resource-link > svg,
+.post-resource-document > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.post-resource-description {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.post-resource-description strong {
+  font-size: 14px;
+}
+
+.post-resource-description small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.post-resource-document-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.post-resource-preview > img {
+  display: block;
+  width: 100%;
+  max-height: 65dvh;
+  object-fit: contain;
+}
+
+.post-resource-preview .modal-header h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .post-resource-document {
+    flex-wrap: wrap;
+  }
+
+  .post-resource-document-actions {
+    margin-left: auto;
+  }
+}

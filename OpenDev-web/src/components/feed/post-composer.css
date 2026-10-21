@@ -1,0 +1,340 @@
+.modal.post-composer-modal {
+  width: min(780px, calc(100vw - 32px));
+  height: min(640px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.modal.post-composer-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.post-composer-modal > .modal-header {
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.post-composer-modal > .modal-header .icon-button {
+  margin: 0;
+}
+
+.post-composer-modal.is-publishing > .modal-header .icon-button {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.post-composer-modal .composer {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.post-composer-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 24px;
+}
+
+.post-composer-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.post-composer-author > div:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.post-composer-author strong,
+.post-composer-author span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-composer-author span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.post-composer-selects {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(170px, 1fr);
+  gap: 12px;
+  max-width: 100%;
+}
+
+.post-composer-modal .post-composer-selects .field {
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+}
+
+.post-composer-selects select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  background: #fafafa;
+}
+
+.post-composer-selects:has(.composer-channel-field) {
+  grid-template-columns: repeat(3, minmax(100px, 1fr));
+}
+
+.composer-channel-notice {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--neutral-soft, #f3f4f6);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.post-composer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 24px 20px;
+  scrollbar-gutter: stable;
+}
+
+.post-composer-modal .post-composer-writing {
+  display: block;
+  width: 100%;
+  height: 210px;
+  min-height: 180px;
+  padding: 14px 12px;
+  border: 1px solid var(--line);
+  background: var(--surface, white);
+  font-size: 16px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.post-composer-modal .post-composer-writing:focus-visible,
+.post-composer-modal .post-composer-code textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.post-composer-modal .composer-help {
+  margin-top: 18px;
+}
+
+.post-composer-code-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.post-composer-code-heading small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.post-composer-modal .post-composer-code textarea {
+  min-height: 180px;
+  background: #fafafa;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.post-composer-footer {
+  flex-shrink: 0;
+  padding: 16px 28px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface, white);
+}
+
+.post-composer-footer .composer-footer {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.post-composer-footer .field-error {
+  margin: 0 0 12px;
+}
+
+.post-composer-footer .character-count {
+  display: inline;
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-composer-footer .button {
+  min-width: 110px;
+  min-height: 42px;
+}
+
+.composer-resource-actions {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.post-composer-footer .composer-footer {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.post-composer-publish {
+  margin-left: auto;
+}
+
+.composer-resources,
+.composer-link-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface, white);
+}
+
+.composer-resources-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.composer-resources-heading > span {
+  color: var(--muted);
+}
+
+.composer-resource {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.composer-resource img {
+  flex-shrink: 0;
+  width: 80px;
+  height: 60px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
+.composer-resource strong,
+.composer-resource small {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.composer-resource small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.composer-link-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  color: var(--muted);
+  font-size: 19px;
+}
+
+@media (max-width: 700px) {
+  .modal.post-composer-modal {
+    width: calc(100vw - 16px);
+    height: min(640px, calc(100dvh - 24px));
+    max-height: calc(100dvh - 24px);
+    border-radius: 14px;
+  }
+
+  .post-composer-modal > .modal-header {
+    padding: 16px;
+  }
+
+  .post-composer-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .post-composer-selects {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .post-composer-selects:has(.composer-channel-field) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .composer-channel-field {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .post-composer-body {
+    padding: 6px 16px 20px;
+  }
+
+  .post-composer-modal .post-composer-writing {
+    min-height: 180px;
+    padding: 10px 6px;
+    font-size: 16px;
+  }
+
+  .post-composer-footer {
+    padding: 14px 16px max(14px, env(safe-area-inset-bottom));
+  }
+
+  .post-composer-footer .composer-footer {
+    flex-wrap: wrap;
+  }
+
+  .post-composer-footer .post-composer-publish {
+    margin-left: auto;
+    gap: 12px;
+  }
+}
+
+@media (max-height: 540px) {
+  .post-composer-header {
+    padding-block: 10px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .post-composer-author {
+    display: none;
+  }
+
+  .post-composer-modal > .modal-header {
+    padding-block: 10px;
+  }
+
+  .post-composer-footer .composer-hint {
+    display: none;
+  }
+}

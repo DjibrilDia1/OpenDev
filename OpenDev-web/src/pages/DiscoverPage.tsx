@@ -7,12 +7,22 @@ import { EmptyState } from '../components/common/EmptyState'
 import { SearchIcon } from '../components/common/Icons'
 import { categories, matches } from '../state/catalog'
 import { useCommunities, useDemo } from '../state/store'
+import { interestScore } from '../lib/recommendations'
 export function DiscoverPage() {
   const communityCatalog = useCommunities()
   const [params, setParams] = useSearchParams()
-  const { state, requireAuth } = useDemo()
+  const { state, requireAuth, remote } = useDemo()
   const [creating, setCreating] = useState(false)
-  const category = params.get('categorie') ?? 'Tout'
+  const visibleCategories: readonly string[] = remote
+    ? [
+        'Tout',
+        ...new Set(communityCatalog.map((community) => community.category)),
+      ]
+    : categories
+  const requestedCategory = params.get('categorie') ?? 'Tout'
+  const category = visibleCategories.includes(requestedCategory)
+    ? requestedCategory
+    : 'Tout'
   const query = params.get('q') ?? ''
   const joinedOnly = params.get('mes') === '1'
   function setFilter(key: string, value: string) {
@@ -26,14 +36,20 @@ export function DiscoverPage() {
       { replace: true },
     )
   }
-  const filtered = communityCatalog.filter(
-    (community) =>
-      (!params.get('type') || community.kind === params.get('type')) &&
-      (category === 'Tout' || community.category === category) &&
-      matches(community.name + ' ' + community.description, query) &&
-      (!joinedOnly ||
-        (state.signedIn && state.joined.includes(community.slug))),
-  )
+  const filtered = communityCatalog
+    .filter(
+      (community) =>
+        (!params.get('type') || community.kind === params.get('type')) &&
+        (category === 'Tout' || community.category === category) &&
+        matches(community.name + ' ' + community.description, query) &&
+        (!joinedOnly ||
+          (state.signedIn && state.joined.includes(community.slug))),
+    )
+    .sort(
+      (a, b) =>
+        interestScore(b.name + ' ' + b.description, state.interests) -
+        interestScore(a.name + ' ' + a.description, state.interests),
+    )
   return (
     <AppLayout sidebarVariant="none">
       <div className="discover-page">
@@ -117,7 +133,7 @@ export function DiscoverPage() {
             className="category-filters"
             aria-label="Catégories de communautés"
           >
-            {categories.map((item) => (
+            {visibleCategories.map((item) => (
               <button
                 key={item}
                 className={category === item ? 'active' : ''}
